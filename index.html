@@ -141,7 +141,7 @@
     let currentUser = null;
     let currentPenName = "";
     let currentImageBlob = null;
-    let diariesMap = new Map(); // 일기 데이터 임시 보관용
+    let diariesMap = new Map();
 
     // 로그인 상태 감지
     onAuthStateChanged(auth, async (user) => {
@@ -250,7 +250,6 @@
         const translated = await translateText(koreanText);
         document.getElementById('english-input').value = translated;
 
-        // 2단계, 3단계 영역 표시
         document.getElementById('step2-box').classList.remove('hidden');
         document.getElementById('step3-box').classList.remove('hidden');
       } catch (e) {
@@ -414,7 +413,7 @@
       return y + lineHeight;
     }
 
-    // 순수 Canvas 엔진 이미지 카드 생성기 (아이폰 Safari 100% 지원)
+    // 순수 Canvas 엔진 이미지 카드 생성기 (완환 렌더링 검증 추가)
     window.downloadAsImage = async (docId) => {
       const data = diariesMap.get(docId);
       if (!data) return;
@@ -422,24 +421,25 @@
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const width = 600;
-      let height = 300;
+      let height = 260;
 
       // 이미지 사전 로드
       let imgObj = null;
       if (data.photoUrl) {
         imgObj = new Image();
+        imgObj.crossOrigin = "anonymous";
         imgObj.src = data.photoUrl;
         await new Promise((resolve) => {
           imgObj.onload = resolve;
           imgObj.onerror = resolve;
         });
         if (imgObj.width) {
-          height += (width - 60) * (imgObj.height / imgObj.width) + 20;
+          height += (width - 60) * (imgObj.height / imgObj.width) + 30;
         }
       }
 
       // 텍스트 높이 가산
-      height += Math.ceil((data.koreanContent.length + data.translatedContent.length) / 20) * 28 + 60;
+      height += Math.ceil(((data.koreanContent || '').length + (data.translatedContent || '').length) / 18) * 28 + 40;
 
       canvas.width = width;
       canvas.height = height;
@@ -469,14 +469,14 @@
       ctx.font = 'bold 16px -apple-system, sans-serif';
       ctx.fillText('한글:', 30, currentY);
       ctx.font = '16px -apple-system, sans-serif';
-      currentY = wrapText(ctx, data.koreanContent, 80, currentY, width - 110, 26) + 10;
+      currentY = wrapText(ctx, data.koreanContent || '', 80, currentY, width - 110, 26) + 10;
 
       // 영문 일기
       ctx.fillStyle = '#000000';
       ctx.font = 'bold 16px -apple-system, sans-serif';
       ctx.fillText('번역:', 30, currentY);
       ctx.font = '16px -apple-system, sans-serif';
-      currentY = wrapText(ctx, data.translatedContent, 80, currentY, width - 110, 26) + 20;
+      currentY = wrapText(ctx, data.translatedContent || '', 80, currentY, width - 110, 26) + 20;
 
       // 필사 사진 그리기
       if (imgObj && imgObj.width) {
@@ -485,14 +485,20 @@
         ctx.drawImage(imgObj, 30, currentY, imgWidth, imgHeight);
       }
 
-      // DataURL 및 Blob 생성
+      // 이미지 변환 후 팝업에 바인딩
       const dataUrl = canvas.toDataURL('image/png');
-      document.getElementById('modal-img').src = dataUrl;
+      const modalImg = document.getElementById('modal-img');
+      modalImg.src = dataUrl;
 
-      canvas.toBlob(blob => {
-        currentImageBlob = blob;
+      // Blob 변환 완료 대기
+      await new Promise((resolve) => {
+        canvas.toBlob(blob => {
+          currentImageBlob = blob;
+          resolve();
+        });
       });
 
+      // 데이터 준비가 완료된 후 모달 열기
       document.getElementById('image-modal').classList.remove('hidden');
     };
 
