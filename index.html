@@ -26,6 +26,13 @@
     .btn-group button { font-size: 13px; padding: 10px; margin-bottom: 0; }
     .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .user-nick { font-weight: bold; font-size: 15px; }
+    
+    /* 모바일용 이미지 미리보기 팝업 모달 스타일 */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 20px; box-sizing: border-box; }
+    .modal-content { background: #fff; padding: 16px; border-radius: 16px; max-width: 90%; max-height: 90%; overflow-y: auto; text-align: center; }
+    .modal-content img { max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 12px; }
+    .modal-tip { font-size: 13px; color: #007aff; margin-bottom: 12px; font-weight: bold; }
+
     footer { text-align: center; padding: 20px 0; font-size: 12px; color: #8e8e93; }
   </style>
 
@@ -95,6 +102,18 @@
     <div id="diary-list"></div>
   </div>
 
+  <!-- 이미지 모달 팝업 -->
+  <div id="image-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-tip">💡 이미지를 1초간 길게 눌러 [사진에 추가]를 선택하세요!</div>
+      <img id="modal-img" src="" alt="일기 카드">
+      <div style="display:flex; gap:8px;">
+        <button id="share-btn" onclick="shareImage()" class="secondary" style="margin-bottom:0;">공유하기 / 저장</button>
+        <button onclick="closeModal()" class="outline" style="margin-bottom:0;">닫기</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 저작권 표시 -->
   <footer>
     © 2026 Park Seunghoon. All rights reserved.
@@ -124,6 +143,7 @@
 
     let currentUser = null;
     let currentPenName = "";
+    let currentImageBlob = null;
 
     // 로그인 상태 감지
     onAuthStateChanged(auth, async (user) => {
@@ -255,7 +275,7 @@
             const canvas = document.createElement('canvas');
             let width = img.width;
             let height = img.height;
-            const max_size = 800; // 최대 너비/높이 제한
+            const max_size = 800;
 
             if (width > height) {
               if (width > max_size) {
@@ -274,7 +294,6 @@
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
 
-            // JPEG 70% 품질로 압축하여 저장 용량 대폭 감소
             const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
             resolve(dataUrl);
           };
@@ -303,7 +322,6 @@
         let photoDataUrl = "";
 
         if (photoFile) {
-          // 이미지 리사이징 수행
           photoDataUrl = await resizeAndConvertBase64(photoFile);
         }
 
@@ -320,7 +338,6 @@
           dateString: dateString
         });
 
-        // 폼 초기화 및 2, 3단계 숨기기
         document.getElementById('korean-input').value = "";
         document.getElementById('english-input').value = "";
         document.getElementById('photo-input').value = "";
@@ -377,7 +394,7 @@
       });
     }
 
-    // 이미지 파일 저장 함수
+    // 모바일 지원 이미지 모달 팝업 기능
     window.downloadAsImage = (cardId) => {
       const target = document.getElementById(cardId);
       const btnGroup = target.querySelector('.btn-group');
@@ -385,13 +402,40 @@
       if (btnGroup) btnGroup.style.display = 'none';
 
       html2canvas(target, { useCORS: true, scale: 2 }).then(canvas => {
-        const link = document.createElement('a');
-        link.download = `diary_${Date.now()}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
+        const dataUrl = canvas.toDataURL('image/png');
+        document.getElementById('modal-img').src = dataUrl;
         
+        canvas.toBlob(blob => {
+          currentImageBlob = blob;
+        });
+
+        document.getElementById('image-modal').classList.remove('hidden');
         if (btnGroup) btnGroup.style.display = 'block';
       });
+    };
+
+    // 모바일 웹 공유 API (Web Share API)
+    window.shareImage = async () => {
+      if (!currentImageBlob) return;
+      const file = new File([currentImageBlob], 'diary.png', { type: 'image/png' });
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: '나의 세 줄 일기',
+            text: '오늘의 세 줄 일기 & 필사 카드입니다.'
+          });
+        } catch (e) {
+          console.log('공유 취소/실패:', e);
+        }
+      } else {
+        alert("이미지를 1초간 길게 눌러 [사진에 추가]를 선택해 저장하세요!");
+      }
+    };
+
+    window.closeModal = () => {
+      document.getElementById('image-modal').classList.add('hidden');
     };
   </script>
 </body>
