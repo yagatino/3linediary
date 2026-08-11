@@ -14,7 +14,7 @@
     button.secondary { background-color: #34c759; }
     button.outline { background-color: transparent; color: #007aff; border: 1px solid #007aff; }
     button:disabled { background-color: #ccc; cursor: not-allowed; }
-    .hidden { display: none; }
+    .hidden { display: none !important; }
     .step-box { border: 1px solid #e5e5ea; border-radius: 10px; padding: 14px; margin-bottom: 14px; background: #fafafa; }
     .step-title { font-weight: bold; font-size: 14px; color: #007aff; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
     .diary-item { border: 1px solid #e5e5ea; border-radius: 12px; padding: 16px; margin-bottom: 16px; background: #fff; }
@@ -100,7 +100,7 @@
   </div>
 
   <!-- 이미지 모달 팝업 -->
-  <div id="image-modal" class="modal-overlay hidden">
+  <div id="image-modal" class="modal-overlay hidden" onclick="closeModalOnOverlay(event)">
     <div class="modal-content">
       <div class="modal-tip">💡 이미지를 1초간 길게 눌러 [사진에 추가]를 선택하세요!</div>
       <img id="modal-img" src="" alt="일기 카드">
@@ -413,7 +413,7 @@
       return y + lineHeight;
     }
 
-    // 순수 Canvas 엔진 이미지 카드 생성기 (완환 렌더링 검증 추가)
+    // 순수 Canvas 엔진 이미지 카드 생성기
     window.downloadAsImage = async (docId) => {
       const data = diariesMap.get(docId);
       if (!data) return;
@@ -423,7 +423,6 @@
       const width = 600;
       let height = 260;
 
-      // 이미지 사전 로드
       let imgObj = null;
       if (data.photoUrl) {
         imgObj = new Image();
@@ -438,22 +437,18 @@
         }
       }
 
-      // 텍스트 높이 가산
       height += Math.ceil(((data.koreanContent || '').length + (data.translatedContent || '').length) / 18) * 28 + 40;
 
       canvas.width = width;
       canvas.height = height;
 
-      // 배경 칠하기
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, width, height);
 
-      // 외곽선 칠하기
       ctx.strokeStyle = '#e5e5ea';
       ctx.lineWidth = 4;
       ctx.strokeRect(10, 10, width - 20, height - 20);
 
-      // 상단 날짜 및 필명
       ctx.fillStyle = '#8e8e93';
       ctx.font = '16px -apple-system, sans-serif';
       ctx.fillText(data.dateString || '', 30, 45);
@@ -464,33 +459,28 @@
 
       let currentY = 110;
 
-      // 한글 일기
       ctx.fillStyle = '#000000';
       ctx.font = 'bold 16px -apple-system, sans-serif';
       ctx.fillText('한글:', 30, currentY);
       ctx.font = '16px -apple-system, sans-serif';
       currentY = wrapText(ctx, data.koreanContent || '', 80, currentY, width - 110, 26) + 10;
 
-      // 영문 일기
       ctx.fillStyle = '#000000';
       ctx.font = 'bold 16px -apple-system, sans-serif';
       ctx.fillText('번역:', 30, currentY);
       ctx.font = '16px -apple-system, sans-serif';
       currentY = wrapText(ctx, data.translatedContent || '', 80, currentY, width - 110, 26) + 20;
 
-      // 필사 사진 그리기
       if (imgObj && imgObj.width) {
         const imgWidth = width - 60;
         const imgHeight = imgWidth * (imgObj.height / imgObj.width);
         ctx.drawImage(imgObj, 30, currentY, imgWidth, imgHeight);
       }
 
-      // 이미지 변환 후 팝업에 바인딩
       const dataUrl = canvas.toDataURL('image/png');
       const modalImg = document.getElementById('modal-img');
       modalImg.src = dataUrl;
 
-      // Blob 변환 완료 대기
       await new Promise((resolve) => {
         canvas.toBlob(blob => {
           currentImageBlob = blob;
@@ -498,11 +488,21 @@
         });
       });
 
-      // 데이터 준비가 완료된 후 모달 열기
       document.getElementById('image-modal').classList.remove('hidden');
     };
 
-    // 모바일 웹 공유 API (Web Share API)
+    // 전역 모달 닫기 함수 등록
+    window.closeModal = () => {
+      document.getElementById('image-modal').classList.add('hidden');
+    };
+
+    window.closeModalOnOverlay = (e) => {
+      if (e.target.id === 'image-modal') {
+        window.closeModal();
+      }
+    };
+
+    // 전역 공유 함수 등록
     window.shareImage = async () => {
       if (!currentImageBlob) {
         alert("이미지 생성 중입니다. 잠시 후 다시 시도해 주세요.");
@@ -524,10 +524,6 @@
       } else {
         alert("이미지를 1초간 길게 눌러 [사진에 추가]를 선택하세요!");
       }
-    };
-
-    window.closeModal = () => {
-      document.getElementById('image-modal').classList.add('hidden');
     };
   </script>
 </body>
