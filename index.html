@@ -35,9 +35,6 @@
 
     footer { text-align: center; padding: 20px 0; font-size: 12px; color: #8e8e93; }
   </style>
-
-  <!-- HTML을 이미지로 변환하는 라이브러리 -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
@@ -144,6 +141,7 @@
     let currentUser = null;
     let currentPenName = "";
     let currentImageBlob = null;
+    let diariesMap = new Map(); // 일기 데이터 임시 보관용
 
     // 로그인 상태 감지
     onAuthStateChanged(auth, async (user) => {
@@ -366,6 +364,7 @@
       onSnapshot(q, (snapshot) => {
         const listContainer = document.getElementById('diary-list');
         listContainer.innerHTML = "";
+        diariesMap.clear();
 
         if (snapshot.empty) {
           listContainer.innerHTML = "<p>작성된 일기가 없습니다.</p>";
@@ -375,6 +374,7 @@
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
           const docId = docSnap.id;
+          diariesMap.set(docId, data);
 
           const itemDiv = document.createElement('div');
           itemDiv.className = 'diary-item';
@@ -386,7 +386,7 @@
             <p><strong>번역:</strong> ${data.translatedContent}</p>
             ${data.photoUrl ? `<img src="${data.photoUrl}" alt="필사 사진">` : ""}
             <div class="btn-group">
-              <button onclick="downloadAsImage('card-${docId}')" class="secondary">이미지로 저장 및 공유</button>
+              <button onclick="downloadAsImage('${docId}')" class="secondary">이미지로 저장 및 공유</button>
             </div>
           `;
           listContainer.appendChild(itemDiv);
@@ -394,34 +394,106 @@
       });
     }
 
-    // 모바일 지원 이미지 모달 팝업 기능 (아이폰 렌더링 렌더링 수정)
-    window.downloadAsImage = (cardId) => {
-      const target = document.getElementById(cardId);
-      const btnGroup = target.querySelector('.btn-group');
-      
-      if (btnGroup) btnGroup.style.display = 'none';
+    // 텍스트 줄바꿈 계산 함수 (순수 Canvas 전용)
+    function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+      const words = text.split('');
+      let line = '';
+      for(let n = 0; n < words.length; n++) {
+        let testLine = line + words[n];
+        let metrics = ctx.measureText(testLine);
+        let testWidth = metrics.width;
+        if (testWidth > maxWidth && n > 0) {
+          ctx.fillText(line, x, y);
+          line = words[n];
+          y += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      ctx.fillText(line, x, y);
+      return y + lineHeight;
+    }
 
-      // 캔버스 생성 옵션에 allowTaint 및 useCORS 및 렌더링 대기 적용
-      html2canvas(target, {
-        useCORS: true,
-        allowTaint: true,
-        scale: 2,
-        logging: false
-      }).then(canvas => {
-        const dataUrl = canvas.toDataURL('image/png');
-        const modalImg = document.getElementById('modal-img');
-        modalImg.src = dataUrl;
-        
-        canvas.toBlob(blob => {
-          currentImageBlob = blob;
+    // 순수 Canvas 엔진 이미지 카드 생성기 (아이폰 Safari 100% 지원)
+    window.downloadAsImage = async (docId) => {
+      const data = diariesMap.get(docId);
+      if (!data) return;
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const width = 600;
+      let height = 300;
+
+      // 이미지 사전 로드
+      let imgObj = null;
+      if (data.photoUrl) {
+        imgObj = new Image();
+        imgObj.src = data.photoUrl;
+        await new Promise((resolve) => {
+          imgObj.onload = resolve;
+          imgObj.onerror = resolve;
         });
+        if (imgObj.width) {
+          height += (width - 60) * (imgObj.height / imgObj.width) + 20;
+        }
+      }
 
-        document.getElementById('image-modal').classList.remove('hidden');
-        if (btnGroup) btnGroup.style.display = 'block';
-      }).catch(err => {
-        alert("이미지 생성 중 오류가 발생했습니다: " + err.message);
-        if (btnGroup) btnGroup.style.display = 'block';
+      // 텍스트 높이 가산
+      height += Math.ceil((data.koreanContent.length + data.translatedContent.length) / 20) * 28 + 60;
+
+      canvas.width = width;
+      canvas.height = height;
+
+      // 배경 칠하기
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+
+      // 외곽선 칠하기
+      ctx.strokeStyle = '#e5e5ea';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(10, 10, width - 20, height - 20);
+
+      // 상단 날짜 및 필명
+      ctx.fillStyle = '#8e8e93';
+      ctx.font = '16px -apple-system, sans-serif';
+      ctx.fillText(data.dateString || '', 30, 45);
+
+      ctx.fillStyle = '#007aff';
+      ctx.font = 'bold 18px -apple-system, sans-serif';
+      ctx.fillText(`✍️ ${data.penName || currentPenName}`, 30, 75);
+
+      let currentY = 110;
+
+      // 한글 일기
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 16px -apple-system, sans-serif';
+      ctx.fillText('한글:', 30, currentY);
+      ctx.font = '16px -apple-system, sans-serif';
+      currentY = wrapText(ctx, data.koreanContent, 80, currentY, width - 110, 26) + 10;
+
+      // 영문 일기
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 16px -apple-system, sans-serif';
+      ctx.fillText('번역:', 30, currentY);
+      ctx.font = '16px -apple-system, sans-serif';
+      currentY = wrapText(ctx, data.translatedContent, 80, currentY, width - 110, 26) + 20;
+
+      // 필사 사진 그리기
+      if (imgObj && imgObj.width) {
+        const imgWidth = width - 60;
+        const imgHeight = imgWidth * (imgObj.height / imgObj.width);
+        ctx.drawImage(imgObj, 30, currentY, imgWidth, imgHeight);
+      }
+
+      // DataURL 및 Blob 생성
+      const dataUrl = canvas.toDataURL('image/png');
+      document.getElementById('modal-img').src = dataUrl;
+
+      canvas.toBlob(blob => {
+        currentImageBlob = blob;
       });
+
+      document.getElementById('image-modal').classList.remove('hidden');
     };
 
     // 모바일 웹 공유 API (Web Share API)
@@ -444,7 +516,7 @@
           console.log('공유 취소/실패:', e);
         }
       } else {
-        alert("이미지를 1초간 길게 눌러 [사진에 추가]를 선택해 저장하세요!");
+        alert("이미지를 1초간 길게 눌러 [사진에 추가]를 선택하세요!");
       }
     };
 
