@@ -18,7 +18,7 @@
     .step-box { border: 1px solid #e5e5ea; border-radius: 10px; padding: 14px; margin-bottom: 14px; background: #fafafa; }
     .step-title { font-weight: bold; font-size: 14px; color: #007aff; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
     .diary-item { border: 1px solid #e5e5ea; border-radius: 12px; padding: 16px; margin-bottom: 16px; background: #fff; }
-    .diary-item img { max-width: 100%; border-radius: 8px; margin-top: 8px; }
+    .diary-item img { max-width: 100%; border-radius: 8px; margin-top: 8px; display: block; }
     .timestamp { font-size: 12px; color: #8e8e93; margin-bottom: 4px; }
     .author-tag { font-size: 13px; font-weight: bold; color: #007aff; margin-bottom: 8px; }
     .notice-box { background-color: #fff8e6; border: 1px solid #ffe58f; border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #8a6d3b; margin-bottom: 16px; line-height: 1.4; }
@@ -30,7 +30,7 @@
     /* 모바일용 이미지 미리보기 팝업 모달 스타일 */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 20px; box-sizing: border-box; }
     .modal-content { background: #fff; padding: 16px; border-radius: 16px; max-width: 90%; max-height: 90%; overflow-y: auto; text-align: center; }
-    .modal-content img { max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 12px; }
+    .modal-content img { max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 12px; display: block; margin-left: auto; margin-right: auto; }
     .modal-tip { font-size: 13px; color: #007aff; margin-bottom: 12px; font-weight: bold; }
 
     footer { text-align: center; padding: 20px 0; font-size: 12px; color: #8e8e93; }
@@ -394,16 +394,23 @@
       });
     }
 
-    // 모바일 지원 이미지 모달 팝업 기능
+    // 모바일 지원 이미지 모달 팝업 기능 (아이폰 렌더링 렌더링 수정)
     window.downloadAsImage = (cardId) => {
       const target = document.getElementById(cardId);
       const btnGroup = target.querySelector('.btn-group');
       
       if (btnGroup) btnGroup.style.display = 'none';
 
-      html2canvas(target, { useCORS: true, scale: 2 }).then(canvas => {
+      // 캔버스 생성 옵션에 allowTaint 및 useCORS 및 렌더링 대기 적용
+      html2canvas(target, {
+        useCORS: true,
+        allowTaint: true,
+        scale: 2,
+        logging: false
+      }).then(canvas => {
         const dataUrl = canvas.toDataURL('image/png');
-        document.getElementById('modal-img').src = dataUrl;
+        const modalImg = document.getElementById('modal-img');
+        modalImg.src = dataUrl;
         
         canvas.toBlob(blob => {
           currentImageBlob = blob;
@@ -411,12 +418,19 @@
 
         document.getElementById('image-modal').classList.remove('hidden');
         if (btnGroup) btnGroup.style.display = 'block';
+      }).catch(err => {
+        alert("이미지 생성 중 오류가 발생했습니다: " + err.message);
+        if (btnGroup) btnGroup.style.display = 'block';
       });
     };
 
     // 모바일 웹 공유 API (Web Share API)
     window.shareImage = async () => {
-      if (!currentImageBlob) return;
+      if (!currentImageBlob) {
+        alert("이미지 생성 중입니다. 잠시 후 다시 시도해 주세요.");
+        return;
+      }
+      
       const file = new File([currentImageBlob], 'diary.png', { type: 'image/png' });
 
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
