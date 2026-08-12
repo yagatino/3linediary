@@ -45,7 +45,7 @@
     .accordion-details.philosophy { background-color: #f6f5ff !important; border: 1px solid #dcd6ff; }
     .accordion-details.help { background-color: #f0f7ff !important; border: 1px solid #cce4ff; }
     
-    .accordion-summary { font-size: 15px; cursor: pointer; outline: none; padding: 4px 0; font-weight: bold; }
+    .accordion-summary { font-size: 14px; cursor: pointer; outline: none; padding: 4px 0; font-weight: bold; }
     .accordion-summary.philosophy { color: #5856d6; }
     .accordion-summary.help { color: #007aff; }
 
@@ -112,7 +112,7 @@
 </head>
 <body>
 
-  <!-- 0. 로딩 대기 화면 (인증 상태 확인 전 초기 상태) -->
+  <!-- 0. 로딩 대기 화면 -->
   <div id="loading-section" class="card loading-box">
     <div class="spinner"></div>
     <div>로그인 정보 확인 중...</div>
@@ -145,10 +145,10 @@
       </div>
     </div>
 
-    <!-- 1. 철학 및 배경: 3 line diary로 기대하는 것 -->
+    <!-- 1. 철학 및 배경: 3 line diary로 기대하는 것 (제목 축소 반영) -->
     <details class="accordion-details philosophy">
       <summary class="accordion-summary philosophy">
-        💡 3 line diary로 기대하는 것 (클릭하여 펼치기)
+        💡 3 line diary로 기대하는 것 (클릭-펼치기)
       </summary>
       <div class="accordion-content philosophy">
         <p>영어 공부를 지속하고 주제에 몰입할 수 있으려면, 좋아하는 주제나 내용, 나와 관련 있는 이야기인 게 좋겠지요. 글을 쓴다면 어떨까요? 내가 하고 싶은 이야기를 쓸 수 있으면 좋습니다. 그 사이의 장벽이 작문입니다. 이 서비스는 '작문 활동'은 AI에 맡깁니다. 대신, 내가 하고 싶었던 말을 영어 문장으로 확인하고, 차분히 필사를 하면서 기억하는겁니다. 그렇다고 '반드시 외워야 한다'는 식으로 접근할 필요는 없습니다. 3줄 일기 쓰기만으로 영어 공부를 끝낼 수는 없으니까요. 늘 주어진 자료를 보고, 주어진 구문에 따라 문장을 만들 게 아니라, 내가 원하는 문장을 만들고 읽고 쓰자는 데 의의가 있습니다. 단, 효과를 높이려면, 번역된 영어 문장을 보고 최대한 외워서, 옮겨 써보는 게 좋습니다.</p>
@@ -177,10 +177,10 @@
       </div>
     </details>
 
-    <!-- 2. 사용 방법: 3 line diary 사용법 -->
+    <!-- 2. 사용 방법: 3 line diary 사용법 (제목 축소 반영) -->
     <details class="accordion-details help">
       <summary class="accordion-summary help">
-        📖 3 line diary 사용법 (클릭하여 펼치기)
+        📖 3 line diary 사용법 (클릭-펼치기)
       </summary>
       <div class="accordion-content help">
         <h4>Step 1. 필명(닉네임) 설정하기</h4>
@@ -351,7 +351,6 @@
 
     // 로그인 상태 감지 (로딩 화면 제어로 깜빡임 회피)
     onAuthStateChanged(auth, async (user) => {
-      // 인증 상태 확인이 끝났으므로 로딩 화면 숨김
       document.getElementById('loading-section').classList.add('hidden');
 
       if (user) {
@@ -384,7 +383,6 @@
 
     // 로그아웃
     window.logout = () => {
-      // 로그아웃 시 다시 로딩 상태로 잠깐 보여준 후 처리
       document.getElementById('loading-section').classList.remove('hidden');
       signOut(auth);
     };
