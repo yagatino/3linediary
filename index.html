@@ -98,7 +98,10 @@
     .btn-delete-yes { background-color: #fff0f0; color: #ff3b30; border: 1px solid #ff3b30; font-weight: bold; font-size: 15px; }
     .btn-delete-yes:hover { background-color: #ff3b30; color: #fff; }
 
-    footer { text-align: center; padding: 20px 0; font-size: 12px; color: #8e8e93; }
+    /* 푸터 스타일 */
+    footer { text-align: center; padding: 20px 0 30px 0; font-size: 12px; color: #8e8e93; }
+    .feedback-link { display: inline-block; margin-bottom: 10px; padding: 8px 16px; background-color: #f0f0f7; color: #007aff; text-decoration: none; border-radius: 20px; font-weight: bold; font-size: 13px; transition: background-color 0.2s; }
+    .feedback-link:hover { background-color: #e5e5ea; }
   </style>
 </head>
 <body>
@@ -290,8 +293,13 @@
     </div>
   </div>
 
-  <!-- 저작권 표시 -->
+  <!-- 저작권 및 문의하기 피드백 푸터 -->
   <footer>
+    <div>
+      <a href="https://forms.gle/HsLAdvujMQYMmGCT8" target="_blank" rel="noopener noreferrer" class="feedback-link">
+        💬 문의 및 개선 의견 보내기
+      </a>
+    </div>
     © 2026 Park Seunghoon. All rights reserved.
   </footer>
 
