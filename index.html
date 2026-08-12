@@ -22,6 +22,12 @@
     button.outline { background-color: transparent; color: #007aff; border: 1px solid #007aff; }
     button:disabled { background-color: #ccc; cursor: not-allowed; }
     .hidden { display: none !important; }
+    
+    /* 로딩 화면 스타일 */
+    .loading-box { text-align: center; padding: 40px 20px; color: #8e8e93; font-size: 14px; }
+    .spinner { width: 28px; height: 28px; border: 3px solid #e5e5ea; border-top: 3px solid #007aff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 12px auto; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
     .step-box { border: 1px solid #e5e5ea; border-radius: 10px; padding: 14px; margin-bottom: 14px; background: #fafafa; }
     .step-title { font-weight: bold; font-size: 14px; color: #007aff; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
     .diary-item { border: 1px solid #e5e5ea; border-radius: 12px; padding: 16px; margin-bottom: 16px; background: #fff; }
@@ -106,8 +112,14 @@
 </head>
 <body>
 
+  <!-- 0. 로딩 대기 화면 (인증 상태 확인 전 초기 상태) -->
+  <div id="loading-section" class="card loading-box">
+    <div class="spinner"></div>
+    <div>로그인 정보 확인 중...</div>
+  </div>
+
   <!-- 1. 로그인 화면 -->
-  <div id="login-section" class="card">
+  <div id="login-section" class="card hidden">
     <h2>세 줄 일기장</h2>
     <p>구글 계정으로 로그인하여 일기를 시작하세요.</p>
     <button onclick="loginWithGoogle()">Google 계정으로 로그인</button>
@@ -337,8 +349,11 @@
     let targetDeleteDocId = null;
     let isRandomMode = false;
 
-    // 로그인 상태 감지
+    // 로그인 상태 감지 (로딩 화면 제어로 깜빡임 회피)
     onAuthStateChanged(auth, async (user) => {
+      // 인증 상태 확인이 끝났으므로 로딩 화면 숨김
+      document.getElementById('loading-section').classList.add('hidden');
+
       if (user) {
         currentUser = user;
         document.getElementById('login-section').classList.add('hidden');
@@ -358,10 +373,9 @@
       }
     });
 
-    // 구글 로그인 (아이폰 Safari 타사 쿠키 차단 회피를 위해 signInWithPopup으로 통일)
+    // 구글 로그인
     window.loginWithGoogle = () => {
       signInWithPopup(auth, provider).catch(e => {
-        // 취소 및 모바일 팝업 관련 단순 닫기 오류 무시
         if (e.code !== 'auth/cancelled-popup-request' && e.code !== 'auth/popup-closed-by-user') {
           alert("로그인 실패: " + e.message);
         }
@@ -369,7 +383,11 @@
     };
 
     // 로그아웃
-    window.logout = () => signOut(auth);
+    window.logout = () => {
+      // 로그아웃 시 다시 로딩 상태로 잠깐 보여준 후 처리
+      document.getElementById('loading-section').classList.remove('hidden');
+      signOut(auth);
+    };
 
     // 필명 불러오기
     async function loadUserProfile() {
