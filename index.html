@@ -306,7 +306,7 @@
   <!-- Firebase SDK 모듈 로드 -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, collection, addDoc, doc, setDoc, getDoc, deleteDoc, query, where, orderBy, limit, getDocs, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     // Firebase 설정 정보
@@ -337,11 +337,6 @@
     let targetDeleteDocId = null;
     let isRandomMode = false;
 
-    // 모바일 리다이렉트 로그인 결과 처리
-    getRedirectResult(auth).catch(e => {
-      console.log("리다이렉트 처리 결과:", e);
-    });
-
     // 로그인 상태 감지
     onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -363,22 +358,14 @@
       }
     });
 
-    // 구글 로그인 (아이폰/모바일 환경 리다이렉트 자동 대응)
+    // 구글 로그인 (아이폰 Safari 타사 쿠키 차단 회피를 위해 signInWithPopup으로 통일)
     window.loginWithGoogle = () => {
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      if (isMobile) {
-        signInWithRedirect(auth, provider).catch(e => {
-          if (e.code !== 'auth/cancelled-popup-request') {
-            alert("로그인 실패: " + e.message);
-          }
-        });
-      } else {
-        signInWithPopup(auth, provider).catch(e => {
-          if (e.code !== 'auth/cancelled-popup-request') {
-            alert("로그인 실패: " + e.message);
-          }
-        });
-      }
+      signInWithPopup(auth, provider).catch(e => {
+        // 취소 및 모바일 팝업 관련 단순 닫기 오류 무시
+        if (e.code !== 'auth/cancelled-popup-request' && e.code !== 'auth/popup-closed-by-user') {
+          alert("로그인 실패: " + e.message);
+        }
+      });
     };
 
     // 로그아웃
