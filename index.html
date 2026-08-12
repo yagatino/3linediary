@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>세 줄 일기 & 필사 노트</title>
+  <title>3 line diary</title>
 
   <!-- PWA 및 파비콘 아이콘 설정 -->
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
@@ -53,10 +53,23 @@
     .calendar-day-cell.selected { background-color: #e5f1ff; border-radius: 8px; }
     .diary-dot { width: 6px; height: 6px; background-color: #34c759; border-radius: 50%; margin-top: 2px; }
 
-    /* 목록 영역 헤더 스타일 */
-    .list-header-group { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-    .list-header-group h3 { margin: 0; }
-    .btn-reset-list { background: none; border: none; font-size: 12px; color: #007aff; cursor: pointer; width: auto; padding: 0; margin: 0; text-decoration: underline; }
+    /* 목록 헤더 & 토글 스위치 스타일 */
+    .list-header-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+    .list-header-top { display: flex; justify-content: space-between; align-items: center; }
+    .list-header-top h3 { margin: 0; font-size: 16px; }
+    
+    /* 슬라이드 토글 스위치 */
+    .toggle-container { display: flex; align-items: center; gap: 8px; background: #f0f0f7; padding: 4px 8px; border-radius: 20px; font-size: 12px; font-weight: bold; color: #6e6e73; width: fit-content; }
+    .toggle-label { cursor: pointer; user-select: none; }
+    .toggle-label.active { color: #007aff; }
+    .switch { position: relative; display: inline-block; width: 36px; height: 20px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; border-radius: 20px; }
+    .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .3s; border-radius: 50%; }
+    input:checked + .slider { background-color: #007aff; }
+    input:checked + .slider:before { transform: translateX(16px); }
+
+    .btn-refresh-random { background: #f0f0f7; color: #007aff; border: 1px solid #007aff; font-size: 12px; font-weight: bold; padding: 6px 12px; border-radius: 8px; cursor: pointer; width: auto; margin-top: 4px; margin-bottom: 8px; }
 
     /* 모달 공통 스타일 */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 20px; box-sizing: border-box; }
@@ -64,7 +77,7 @@
     .modal-content img { max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 12px; display: block; margin-left: auto; margin-right: auto; }
     .modal-tip { font-size: 13px; color: #007aff; margin-bottom: 12px; font-weight: bold; }
     
-    /* 삭제 모달 전용 스타일 */
+    /* 삭제 모달 스타일 */
     .delete-modal-title { font-size: 16px; font-weight: bold; color: #ff3b30; margin-bottom: 8px; }
     .delete-modal-text { font-size: 14px; color: #333; margin-bottom: 16px; line-height: 1.4; }
     .btn-delete-yes { background-color: #fff0f0; color: #ff3b30; border: 1px solid #ff3b30; font-weight: bold; font-size: 15px; }
@@ -152,12 +165,30 @@
     </div>
   </div>
 
-  <!-- 3. 일기 목록 화면 -->
+  <!-- 3. 일기 목록 화면 (토글 스위치 반영) -->
   <div id="list-section" class="card hidden">
     <div class="list-header-group">
-      <h3 id="list-title">최근 작성한 일기 (최신 3개)</h3>
-      <button id="reset-list-btn" class="btn-reset-list hidden" onclick="resetDiaryList()">전체보기</button>
+      <div class="list-header-top">
+        <h3 id="list-title">최근 작성한 일기 (최신 3개)</h3>
+        
+        <!-- 슬라이드 토글 스위치 -->
+        <div class="toggle-container">
+          <span id="label-recent" class="toggle-label active">최근</span>
+          <label class="switch">
+            <input type="checkbox" id="mode-toggle" onchange="toggleDiaryMode(this)">
+            <span class="slider"></span>
+          </label>
+          <span id="label-random" class="toggle-label">랜덤</span>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <button id="reset-list-btn" class="btn-reset-list hidden" onclick="resetDiaryList()">전체보기</button>
+        <!-- 랜덤 일기 모드일 때만 표시되는 새로고침 버튼 -->
+        <button id="refresh-random-btn" class="btn-refresh-random hidden" onclick="loadRandomDiary()">🔄 다른 일기 뽑기</button>
+      </div>
     </div>
+    
     <div id="diary-list"></div>
   </div>
 
@@ -194,7 +225,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, doc, setDoc, getDoc, deleteDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, doc, setDoc, getDoc, deleteDoc, query, where, orderBy, limit, getDocs, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     // Firebase 설정 정보
     const firebaseConfig = {
@@ -217,11 +248,12 @@
     let currentImageBlob = null;
     let diariesMap = new Map();
 
-    // 달력 및 필터 관련 변수
+    // 달력 및 모드 변수
     let calendarDate = new Date();
     let writtenDatesSet = new Set();
     let selectedDateKey = null;
     let targetDeleteDocId = null;
+    let isRandomMode = false;
 
     // 로그인 상태 감지
     onAuthStateChanged(auth, async (user) => {
@@ -364,7 +396,7 @@
       }
     };
 
-    // 아이폰/고화질 이미지 자동 리사이징 및 압축 함수
+    // 이미지 리사이징
     function resizeAndConvertBase64(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -460,7 +492,7 @@
       }
     };
 
-    // 사용자의 모든 일기 작성 날짜 파악
+    // 작성 날짜 파악
     function loadAllDiaryDates() {
       const q = query(
         collection(db, "diaries"),
@@ -583,21 +615,7 @@
             const docId = docSnap.id;
             diariesMap.set(docId, data);
 
-            const itemDiv = document.createElement('div');
-            itemDiv.className = 'diary-item';
-            itemDiv.id = `card-${docId}`;
-            itemDiv.innerHTML = `
-              <div class="timestamp">${data.dateString || ''}</div>
-              <div class="author-tag">✍️ ${data.penName || currentPenName}</div>
-              <p><strong>한글:</strong> ${data.koreanContent}</p>
-              <p><strong>번역:</strong> ${data.translatedContent}</p>
-              ${data.photoUrl ? `<img src="${data.photoUrl}" alt="필사 사진">` : ""}
-              <div class="btn-group">
-                <button onclick="downloadAsImage('${docId}')" class="secondary">이미지로 저장 및 공유</button>
-                <button onclick="openDeleteModal('${docId}')" class="danger">지우기</button>
-              </div>
-            `;
-            listContainer.appendChild(itemDiv);
+            renderDiaryCard(listContainer, docId, data);
           }
         });
 
@@ -609,7 +627,87 @@
       });
     }
 
-    // 기본 목록(최신 3개)으로 되돌리기
+    // 모드 토글 함수 (최근 <-> 랜덤)
+    window.toggleDiaryMode = (toggleInput) => {
+      isRandomMode = toggleInput.checked;
+      const labelRecent = document.getElementById('label-recent');
+      const labelRandom = document.getElementById('label-random');
+      const refreshBtn = document.getElementById('refresh-random-btn');
+      const listTitle = document.getElementById('list-title');
+
+      if (isRandomMode) {
+        labelRecent.classList.remove('active');
+        labelRandom.classList.add('active');
+        refreshBtn.classList.remove('hidden');
+        listTitle.innerText = "랜덤 일기 (1개)";
+        loadRandomDiary();
+      } else {
+        labelRandom.classList.remove('active');
+        labelRecent.classList.add('active');
+        refreshBtn.classList.add('hidden');
+        resetDiaryList();
+      }
+    };
+
+    // 랜덤 일기 1개 가져오기
+    window.loadRandomDiary = async () => {
+      if (!currentUser) return;
+      const listContainer = document.getElementById('diary-list');
+      listContainer.innerHTML = "<p>랜덤 일기를 불러오는 중...</p>";
+
+      try {
+        const q = query(
+          collection(db, "diaries"),
+          where("uid", "==", currentUser.uid)
+        );
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+          listContainer.innerHTML = "<p>작성된 일기가 없습니다.</p>";
+          return;
+        }
+
+        const docsArray = [];
+        snapshot.forEach((docSnap) => {
+          docsArray.push({ id: docSnap.id, data: docSnap.data() });
+        });
+
+        // 무작위로 1개 선택
+        const randomIndex = Math.floor(Math.random() * docsArray.length);
+        const selected = docsArray[randomIndex];
+
+        listContainer.innerHTML = "";
+        diariesMap.clear();
+        diariesMap.set(selected.id, selected.data);
+
+        renderDiaryCard(listContainer, selected.id, selected.data);
+
+      } catch (error) {
+        console.error("랜덤 일기 로드 오류:", error);
+        listContainer.innerHTML = "<p>일기를 불러오는 도중 오류가 발생했습니다.</p>";
+      }
+    };
+
+    // 일기 카드 HTML 생성 공통 함수
+    function renderDiaryCard(container, docId, data) {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'diary-item';
+      itemDiv.id = `card-${docId}`;
+      itemDiv.innerHTML = `
+        <div class="timestamp">${data.dateString || ''}</div>
+        <div class="author-tag">✍️ ${data.penName || currentPenName}</div>
+        <p><strong>한글:</strong> ${data.koreanContent}</p>
+        <p><strong>번역:</strong> ${data.translatedContent}</p>
+        ${data.photoUrl ? `<img src="${data.photoUrl}" alt="필사 사진">` : ""}
+        <div class="btn-group">
+          <button onclick="downloadAsImage('${docId}')" class="secondary">이미지로 저장 및 공유</button>
+          <button onclick="openDeleteModal('${docId}')" class="danger">지우기</button>
+        </div>
+      `;
+      container.appendChild(itemDiv);
+    }
+
+    // 기본 목록(최신 3개) 되돌리기
     window.resetDiaryList = () => {
       selectedDateKey = null;
       document.getElementById('reset-list-btn').classList.add('hidden');
@@ -618,7 +716,7 @@
       loadDiaries();
     };
 
-    // 오늘 날짜로 이동
+    // 오늘 날짜 이동
     window.goToday = () => {
       const now = new Date();
       calendarDate = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -650,7 +748,7 @@
       );
 
       onSnapshot(q, (snapshot) => {
-        if (selectedDateKey) return;
+        if (selectedDateKey || isRandomMode) return;
 
         const listContainer = document.getElementById('diary-list');
         listContainer.innerHTML = "";
@@ -665,22 +763,7 @@
           const data = docSnap.data();
           const docId = docSnap.id;
           diariesMap.set(docId, data);
-
-          const itemDiv = document.createElement('div');
-          itemDiv.className = 'diary-item';
-          itemDiv.id = `card-${docId}`;
-          itemDiv.innerHTML = `
-            <div class="timestamp">${data.dateString || ''}</div>
-            <div class="author-tag">✍️ ${data.penName || currentPenName}</div>
-            <p><strong>한글:</strong> ${data.koreanContent}</p>
-            <p><strong>번역:</strong> ${data.translatedContent}</p>
-            ${data.photoUrl ? `<img src="${data.photoUrl}" alt="필사 사진">` : ""}
-            <div class="btn-group">
-              <button onclick="downloadAsImage('${docId}')" class="secondary">이미지로 저장 및 공유</button>
-              <button onclick="openDeleteModal('${docId}')" class="danger">지우기</button>
-            </div>
-          `;
-          listContainer.appendChild(itemDiv);
+          renderDiaryCard(listContainer, docId, data);
         });
       });
     }
@@ -704,13 +787,16 @@
         await deleteDoc(doc(db, "diaries", targetDeleteDocId));
         alert("일기가 삭제되었습니다.");
         closeDeleteModal();
+        if (isRandomMode) {
+          loadRandomDiary();
+        }
       } catch (error) {
         console.error("삭제 오류:", error);
         alert("삭제 중 오류가 발생했습니다: " + error.message);
       }
     };
 
-    // 텍스트 줄바꿈 계산 및 출력 함수 (Canvas)
+    // 텍스트 줄바꿈 계산 (Canvas)
     function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
       const words = text.split('');
       let line = '';
