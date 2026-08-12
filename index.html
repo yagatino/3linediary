@@ -37,15 +37,15 @@
     .preview-box { width: 100%; margin-top: 8px; margin-bottom: 12px; border-radius: 8px; overflow: hidden; }
     .preview-box img { width: 100%; height: auto; display: block; object-fit: contain; }
 
-    /* 달력(Calendar) 스타일 */
+    /* 달력(Calendar) 전용 스타일 */
+    .calendar-container { background: #fff; padding: 16px; border-radius: 12px; border: 1px solid #e5e5ea; margin-bottom: 20px; }
     .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .calendar-header h4 { margin: 0; font-size: 16px; color: #1d1d1f; }
-    .calendar-nav-btn { background: none; border: none; font-size: 16px; color: #007aff; width: auto; padding: 4px 8px; margin: 0; cursor: pointer; }
-    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; gap: 4px; }
-    .calendar-day-header { font-size: 12px; font-weight: bold; color: #8e8e93; padding-bottom: 6px; }
-    .calendar-day-cell { font-size: 13px; height: 36px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; border-radius: 50%; }
-    .calendar-day-cell.has-diary { font-weight: bold; color: #1d1d1f; cursor: pointer; }
-    /* 작성된 날짜 아래 녹색 동그라미 표식 */
+    .calendar-nav-btn { background: none; border: none; font-size: 14px; color: #007aff; width: auto; padding: 4px 8px; margin: 0; cursor: pointer; }
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; gap: 2px; }
+    .calendar-day-header { font-size: 12px; font-weight: bold; color: #8e8e93; padding-bottom: 8px; }
+    .calendar-day-cell { min-height: 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; border-radius: 8px; font-size: 13px; color: #333; }
+    /* 일기 작성된 날짜의 녹색 동그라미 표식 */
     .diary-dot { width: 6px; height: 6px; background-color: #34c759; border-radius: 50%; margin-top: 2px; }
 
     /* 모바일용 이미지 미리보기 팝업 모달 스타일 */
@@ -121,19 +121,19 @@
     </div>
   </div>
 
-  <!-- 달력 카드 영역 -->
-  <div id="calendar-section" class="card hidden">
+  <!-- 달력 영역 (일기 작성 구역과 목록 사이) -->
+  <div id="calendar-section" class="calendar-container hidden">
     <div class="calendar-header">
       <button class="calendar-nav-btn" onclick="changeMonth(-1)">◀ 이전달</button>
       <h4 id="calendar-month-title">2026년 8월</h4>
       <button class="calendar-nav-btn" onclick="changeMonth(1)">다음달 ▶</button>
     </div>
     <div class="calendar-grid" id="calendar-grid">
-      <!-- 동적으로 생성되는 일자 영역 -->
+      <!-- 동적으로 날짜 표시 -->
     </div>
   </div>
 
-  <!-- 3. 일기 목록 화면 (최신 3개 노출) -->
+  <!-- 3. 일기 목록 화면 (최신 3개만 표시) -->
   <div id="list-section" class="card hidden">
     <h3>최근 작성한 일기 (최신 3개)</h3>
     <div id="diary-list"></div>
@@ -183,9 +183,9 @@
     let currentImageBlob = null;
     let diariesMap = new Map();
 
-    // 달력 상태 변수
+    // 달력 관련 글로벌 변수
     let calendarDate = new Date();
-    let writtenDatesSet = new Set(); // YYYY-MM-DD 형식으로 작성된 날짜 보관
+    let writtenDatesSet = new Set(); // 일기가 쓰여진 날짜 파악용 (YYYY-M-D)
 
     // 로그인 상태 감지
     onAuthStateChanged(auth, async (user) => {
@@ -197,8 +197,8 @@
         document.getElementById('list-section').classList.remove('hidden');
         
         await loadUserProfile();
-        loadAllDiaryDates(); // 달력 표시용 모든 날짜 로드
-        loadDiaries();       // 목록용 최신 3개 일기 로드
+        loadAllDiaryDates(); // 달력 표시용 날짜 데이터 불러오기
+        loadDiaries();       // 최신 3개 일기 불러오기
       } else {
         currentUser = null;
         document.getElementById('login-section').classList.remove('hidden');
@@ -393,11 +393,6 @@
 
         const now = new Date();
         const dateString = now.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-        
-        // 날짜 비교용 YYYY-MM-DD
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const formattedDateKey = `${now.getFullYear()}-${month}-${day}`;
 
         await addDoc(collection(db, "diaries"), {
           uid: currentUser.uid,
@@ -406,8 +401,7 @@
           translatedContent: translatedText,
           photoUrl: photoDataUrl,
           createdAt: serverTimestamp(),
-          dateString: dateString,
-          dateKey: formattedDateKey
+          dateString: dateString
         });
 
         // 입력 폼 초기화
@@ -430,7 +424,7 @@
       }
     };
 
-    // 달력용: 사용자가 작성한 모든 일기의 날짜 파악
+    // 사용자의 모든 일기 작성 날짜 파악 (기존 날짜 데이터 호환 파싱)
     function loadAllDiaryDates() {
       const q = query(
         collection(db, "diaries"),
@@ -441,31 +435,34 @@
         writtenDatesSet.clear();
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
-          if (data.dateKey) {
-            writtenDatesSet.add(data.dateKey);
-          } else if (data.createdAt) {
+          
+          if (data.createdAt && data.createdAt.toDate) {
             const d = data.createdAt.toDate();
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            writtenDatesSet.add(`${d.getFullYear()}-${m}-${day}`);
+            writtenDatesSet.add(`${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`);
+          } else if (data.dateString) {
+            // "2026년 8월 12일..." 문자열 파싱
+            const match = data.dateString.match(/(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일/);
+            if (match) {
+              writtenDatesSet.add(`${parseInt(match[1])}-${parseInt(match[2])}-${parseInt(match[3])}`);
+            }
           }
         });
         renderCalendar();
       });
     }
 
-    // 달력 렌더링 함수
+    // 달력 화면에 그리기
     function renderCalendar() {
       const grid = document.getElementById('calendar-grid');
       const title = document.getElementById('calendar-month-title');
       grid.innerHTML = "";
 
       const year = calendarDate.getFullYear();
-      const month = calendarDate.getMonth();
+      const month = calendarDate.getMonth(); // 0 ~ 11
 
       title.innerText = `${year}년 ${month + 1}월`;
 
-      // 요일 헤더
+      // 요일 헤더 생성
       const days = ['일', '월', '화', '수', '목', '금', '토'];
       days.forEach(d => {
         const h = document.createElement('div');
@@ -477,27 +474,24 @@
       const firstDay = new Date(year, month, 1).getDay();
       const lastDate = new Date(year, month + 1, 0).getDate();
 
-      // 시작 빈 칸
+      // 시작 빈 칸 채우기
       for (let i = 0; i < firstDay; i++) {
         const emptyCell = document.createElement('div');
         emptyCell.className = 'calendar-day-cell';
         grid.appendChild(emptyCell);
       }
 
-      // 날짜 채우기
+      // 날짜 칸 채우기
       for (let date = 1; date <= lastDate; date++) {
         const cell = document.createElement('div');
         cell.className = 'calendar-day-cell';
-
-        const mStr = String(month + 1).padStart(2, '0');
-        const dStr = String(date).padStart(2, '0');
-        const dateKey = `${year}-${mStr}-${dStr}`;
+        
+        const dateKey = `${year}-${month + 1}-${date}`;
 
         cell.innerHTML = `<span>${date}</span>`;
 
-        // 작성된 일기가 있는 날짜 처리
+        // 해당 날짜에 작성된 일기가 존재하면 녹색 동그라미 추가
         if (writtenDatesSet.has(dateKey)) {
-          cell.classList.add('has-diary');
           const dot = document.createElement('div');
           dot.className = 'diary-dot';
           cell.appendChild(dot);
@@ -507,19 +501,19 @@
       }
     }
 
-    // 달력 월 이동
+    // 달력 이전달/다음달 이동
     window.changeMonth = (delta) => {
       calendarDate.setMonth(calendarDate.getMonth() + delta);
       renderCalendar();
     };
 
-    // 일기 목록 불러오기 (최신 3개 한정)
+    // 일기 목록 불러오기 (최신 3개만)
     function loadDiaries() {
       const q = query(
         collection(db, "diaries"),
         where("uid", "==", currentUser.uid),
         orderBy("createdAt", "desc"),
-        limit(3) // 최근 3개 항목만 가져오기
+        limit(3) // 최신 3개 제한
       );
 
       onSnapshot(q, (snapshot) => {
@@ -575,7 +569,7 @@
       return y + lineHeight;
     }
 
-    // Canvas 기반 카드 이미지 생성기 (높이 자동 계산으로 하단 공백 제거)
+    // Canvas 기반 카드 이미지 생성기 (높이 자동 계산)
     window.downloadAsImage = async (docId) => {
       const data = diariesMap.get(docId);
       if (!data) return;
