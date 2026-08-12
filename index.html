@@ -34,13 +34,21 @@
     .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .user-nick { font-weight: bold; font-size: 15px; }
     
-    /* 사용법 (details) 스타일 */
-    .help-details { background-color: #f0f7ff !important; border: 1px solid #cce4ff; }
-    .help-summary { font-size: 15px; color: #007aff; cursor: pointer; outline: none; padding: 4px 0; font-weight: bold; }
-    .help-content { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0eeff; font-size: 13px; line-height: 1.5; color: #333; }
-    .help-content h4 { margin: 10px 0 4px 0; color: #007aff; font-size: 14px; }
-    .help-content p { margin: 0 0 8px 0; }
-    .help-close-tip { font-size: 11px; color: #8e8e93; }
+    /* 아코디언 (details) 상자 공통 및 개별 스타일 */
+    .accordion-details { border-radius: 10px; padding: 10px; margin-bottom: 12px; }
+    .accordion-details.philosophy { background-color: #f6f5ff !important; border: 1px solid #dcd6ff; }
+    .accordion-details.help { background-color: #f0f7ff !important; border: 1px solid #cce4ff; }
+    
+    .accordion-summary { font-size: 15px; cursor: pointer; outline: none; padding: 4px 0; font-weight: bold; }
+    .accordion-summary.philosophy { color: #5856d6; }
+    .accordion-summary.help { color: #007aff; }
+
+    .accordion-content { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e5ea; font-size: 13px; line-height: 1.6; color: #333; }
+    .accordion-content h4 { margin: 12px 0 4px 0; font-size: 14px; }
+    .accordion-content.philosophy h4 { color: #5856d6; }
+    .accordion-content.help h4 { color: #007aff; }
+    .accordion-content p { margin: 0 0 10px 0; }
+    .accordion-close-tip { font-size: 11px; color: #8e8e93; }
 
     /* 미리보기 이미지 컨테이너 */
     .preview-box { width: 100%; margin-top: 8px; margin-bottom: 12px; border-radius: 8px; overflow: hidden; }
@@ -122,12 +130,44 @@
       </div>
     </div>
 
-    <!-- 최상단 펼치기/접기 사용법 안내 -->
-    <details class="help-details" style="border-radius: 10px; padding: 10px; margin-bottom: 16px;">
-      <summary class="help-summary">
+    <!-- 1. 철학 및 배경: 3 line diary로 기대하는 것 -->
+    <details class="accordion-details philosophy">
+      <summary class="accordion-summary philosophy">
+        💡 3 line diary로 기대하는 것 (클릭하여 펼치기)
+      </summary>
+      <div class="accordion-content philosophy">
+        <p>영어 공부를 지속하고 주제에 몰입할 수 있으려면, 좋아하는 주제나 내용, 나와 관련 있는 이야기인 게 좋겠지요. 글을 쓴다면 어떨까요? 내가 하고 싶은 이야기를 쓸 수 있으면 좋습니다. 그 사이의 장벽이 작문입니다. 이 서비스는 '작문 활동'은 AI에 맡깁니다. 대신, 내가 하고 싶었던 말을 영어 문장으로 확인하고, 차분히 필사를 하면서 기억하는겁니다. 그렇다고 '반드시 외워야 한다'는 식으로 접근할 필요는 없습니다. 3줄 일기 쓰기만으로 영어 공부를 끝낼 수는 없으니까요. 늘 주어진 자료를 보고, 주어진 구문에 따라 문장을 만들 게 아니라, 내가 원하는 문장을 만들고 읽고 쓰자는 데 의의가 있습니다. 단, 효과를 높이려면, 번역된 영어 문장을 보고 최대한 외워서, 옮겨 써보는 게 좋습니다.</p>
+
+        <p>이런 제 생각은 <strong>'meaningful learning'(유의미 학습)</strong> 개념에 기반하고 있습니다. 학습자의 삶에 닿아 있는 부분, 그렇게 공부할 때 더 기억도 잘 된다고 생각하시면 되겠습니다.</p>
+
+        <p>이러한 학습 방식은 여러 교육학자 및 언어학자들의 연구와도 그 궤를 같이합니다.</p>
+
+        <h4>• 데이비드 오수벨 (David Ausubel, Educational Psychology: A Cognitive View)</h4>
+        <p>오수벨은 새로 배우는 내용이 학습자의 기존 지식 및 삶의 경험과 유기적으로 연결될 때 비로소 <strong>유의미 학습(Meaningful Learning)</strong>이 일어난다고 보았습니다. 기계적인 암기(Rote Learning)와 달리, 자신의 경험과 생각이 담긴 세 줄 일기를 매개로 한 언어 학습은 뇌에 훨씬 오래, 깊이 남게 됩니다.</p>
+
+        <h4>• 스티븐 크라센 (Stephen Krashen, Principles and Practice in Second Language Acquisition)</h4>
+        <p>크라센의 <strong>'정의적 여과막 가설(Affective Filter Hypothesis)'</strong>에 따르면, 학습자가 불안감을 낮추고 흥미와 자발성을 느낄 때 언어 습득 효과가 극대화됩니다. AI를 활용해 작문 부담(Anxiety)을 줄여주고, 자신이 하고 싶은 정서적 이야기를 표현하게 돕는 것은 언어 습득의 문턱을 크게 낮춰줍니다.</p>
+
+        <h4>• 리차드 메이어 (Richard E. Mayer, Multimedia Learning)</h4>
+        <p>메이어의 <strong>'인지이론(Cognitive Theory of Multimedia Learning)'</strong>은 시각 자극과 직접적인 신체 활동이 결합할 때 장기 기억으로의 전환이 잘 일어난다고 설명합니다. AI가 정제해 준 문장을 눈으로 확인하고, 손으로 차분히 필사(Handwriting)하는 행위는 뇌의 여러 영역을 동시에 자극하여 학습 파급력을 높여줍니다.</p>
+
+        <h4>• 제인 윌리스 (Jane Willis, A Framework for Task-Based Learning)</h4>
+        <p>과업 기반 언어 학습(TBLT)의 권위자인 윌리스는 언어 학습에서 가장 중요한 것은 <strong>'진정성 있는 맥락(Authentic Context)'</strong>에서의 자기 표현이라고 강조합니다. 타인이 만든 교재 속 예문이 아닌, '나의 오늘 하루'라는 실제 삶의 맥락에서 출발하는 세 줄 일기는 언어를 진짜 내 것으로 만드는 최적의 과업입니다.</p>
+
+        <p style="margin-top: 12px; font-weight: bold; color: #5856d6;">영어의 재미를 늘 느끼시기를 바랍니다.</p>
+
+        <div style="text-align: right; margin-top: 12px;">
+          <span class="accordion-close-tip">▲ 상단 제목을 누르면 다시 접힙니다.</span>
+        </div>
+      </div>
+    </details>
+
+    <!-- 2. 사용 방법: 3 line diary 사용법 -->
+    <details class="accordion-details help">
+      <summary class="accordion-summary help">
         📖 3 line diary 사용법 (클릭하여 펼치기)
       </summary>
-      <div class="help-content">
+      <div class="accordion-content help">
         <h4>Step 1. 필명(닉네임) 설정하기</h4>
         <p>앱 상단의 <strong>[필명 설정]</strong> 버튼을 클릭하여 일기 카드에 표시될 나만의 필명을 입력합니다. (한글 최대 10자 / 영문·숫자 최대 15자)</p>
 
@@ -144,7 +184,7 @@
         <p>달력(녹색 동그라미)과 최근 일기 목록에서 기록을 확인하고, <strong>[이미지로 저장 및 공유]</strong> 버튼으로 멋진 일기 카드를 만들어 보세요!</p>
 
         <div style="text-align: right; margin-top: 12px;">
-          <span class="help-close-tip">▲ 상단 제목을 누르면 다시 접힙니다.</span>
+          <span class="accordion-close-tip">▲ 상단 제목을 누르면 다시 접힙니다.</span>
         </div>
       </div>
     </details>
