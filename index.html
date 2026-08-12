@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>세 줄 일기 & 필사 노트</title>
 
-  <!-- PWA 및 파비콘 아이콘 설정 (GitHub 최상위 경로 연동) -->
+  <!-- PWA 및 파비콘 아이콘 설정 -->
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -36,6 +36,17 @@
     /* 미리보기 이미지 컨테이너 */
     .preview-box { width: 100%; margin-top: 8px; margin-bottom: 12px; border-radius: 8px; overflow: hidden; }
     .preview-box img { width: 100%; height: auto; display: block; object-fit: contain; }
+
+    /* 달력(Calendar) 스타일 */
+    .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .calendar-header h4 { margin: 0; font-size: 16px; color: #1d1d1f; }
+    .calendar-nav-btn { background: none; border: none; font-size: 16px; color: #007aff; width: auto; padding: 4px 8px; margin: 0; cursor: pointer; }
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; gap: 4px; }
+    .calendar-day-header { font-size: 12px; font-weight: bold; color: #8e8e93; padding-bottom: 6px; }
+    .calendar-day-cell { font-size: 13px; height: 36px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; border-radius: 50%; }
+    .calendar-day-cell.has-diary { font-weight: bold; color: #1d1d1f; cursor: pointer; }
+    /* 작성된 날짜 아래 녹색 동그라미 표식 */
+    .diary-dot { width: 6px; height: 6px; background-color: #34c759; border-radius: 50%; margin-top: 2px; }
 
     /* 모바일용 이미지 미리보기 팝업 모달 스타일 */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 20px; box-sizing: border-box; }
@@ -110,9 +121,21 @@
     </div>
   </div>
 
-  <!-- 3. 일기 목록 화면 -->
+  <!-- 달력 카드 영역 -->
+  <div id="calendar-section" class="card hidden">
+    <div class="calendar-header">
+      <button class="calendar-nav-btn" onclick="changeMonth(-1)">◀ 이전달</button>
+      <h4 id="calendar-month-title">2026년 8월</h4>
+      <button class="calendar-nav-btn" onclick="changeMonth(1)">다음달 ▶</button>
+    </div>
+    <div class="calendar-grid" id="calendar-grid">
+      <!-- 동적으로 생성되는 일자 영역 -->
+    </div>
+  </div>
+
+  <!-- 3. 일기 목록 화면 (최신 3개 노출) -->
   <div id="list-section" class="card hidden">
-    <h3>저장된 일기 목록</h3>
+    <h3>최근 작성한 일기 (최신 3개)</h3>
     <div id="diary-list"></div>
   </div>
 
@@ -137,7 +160,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, doc, setDoc, getDoc, query, where, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, doc, setDoc, getDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     // Firebase 설정 정보
     const firebaseConfig = {
@@ -160,20 +183,27 @@
     let currentImageBlob = null;
     let diariesMap = new Map();
 
+    // 달력 상태 변수
+    let calendarDate = new Date();
+    let writtenDatesSet = new Set(); // YYYY-MM-DD 형식으로 작성된 날짜 보관
+
     // 로그인 상태 감지
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         currentUser = user;
         document.getElementById('login-section').classList.add('hidden');
         document.getElementById('app-section').classList.remove('hidden');
+        document.getElementById('calendar-section').classList.remove('hidden');
         document.getElementById('list-section').classList.remove('hidden');
         
         await loadUserProfile();
-        loadDiaries();
+        loadAllDiaryDates(); // 달력 표시용 모든 날짜 로드
+        loadDiaries();       // 목록용 최신 3개 일기 로드
       } else {
         currentUser = null;
         document.getElementById('login-section').classList.remove('hidden');
         document.getElementById('app-section').classList.add('hidden');
+        document.getElementById('calendar-section').classList.add('hidden');
         document.getElementById('list-section').classList.add('hidden');
       }
     });
@@ -289,16 +319,16 @@
         reader.onload = function(e) {
           previewImg.src = e.target.result;
           previewContainer.classList.remove('hidden');
-          submitBtn.classList.remove('hidden'); // 파일이 첨부되었을 때만 저장 버튼 표시
+          submitBtn.classList.remove('hidden');
         };
         reader.readAsDataURL(file);
       } else {
         previewContainer.classList.add('hidden');
-        submitBtn.classList.add('hidden'); // 파일 선택 취소 시 다시 숨김
+        submitBtn.classList.add('hidden');
       }
     };
 
-    // 아이폰/고화질 이미지 자동 리사이징 및 압축 함수 (Max 800px)
+    // 아이폰/고화질 이미지 자동 리사이징 및 압축 함수
     function resizeAndConvertBase64(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -363,6 +393,11 @@
 
         const now = new Date();
         const dateString = now.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        
+        // 날짜 비교용 YYYY-MM-DD
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const formattedDateKey = `${now.getFullYear()}-${month}-${day}`;
 
         await addDoc(collection(db, "diaries"), {
           uid: currentUser.uid,
@@ -371,7 +406,8 @@
           translatedContent: translatedText,
           photoUrl: photoDataUrl,
           createdAt: serverTimestamp(),
-          dateString: dateString
+          dateString: dateString,
+          dateKey: formattedDateKey
         });
 
         // 입력 폼 초기화
@@ -394,12 +430,96 @@
       }
     };
 
-    // 일기 목록 불러오기
+    // 달력용: 사용자가 작성한 모든 일기의 날짜 파악
+    function loadAllDiaryDates() {
+      const q = query(
+        collection(db, "diaries"),
+        where("uid", "==", currentUser.uid)
+      );
+
+      onSnapshot(q, (snapshot) => {
+        writtenDatesSet.clear();
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (data.dateKey) {
+            writtenDatesSet.add(data.dateKey);
+          } else if (data.createdAt) {
+            const d = data.createdAt.toDate();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            writtenDatesSet.add(`${d.getFullYear()}-${m}-${day}`);
+          }
+        });
+        renderCalendar();
+      });
+    }
+
+    // 달력 렌더링 함수
+    function renderCalendar() {
+      const grid = document.getElementById('calendar-grid');
+      const title = document.getElementById('calendar-month-title');
+      grid.innerHTML = "";
+
+      const year = calendarDate.getFullYear();
+      const month = calendarDate.getMonth();
+
+      title.innerText = `${year}년 ${month + 1}월`;
+
+      // 요일 헤더
+      const days = ['일', '월', '화', '수', '목', '금', '토'];
+      days.forEach(d => {
+        const h = document.createElement('div');
+        h.className = 'calendar-day-header';
+        h.innerText = d;
+        grid.appendChild(h);
+      });
+
+      const firstDay = new Date(year, month, 1).getDay();
+      const lastDate = new Date(year, month + 1, 0).getDate();
+
+      // 시작 빈 칸
+      for (let i = 0; i < firstDay; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = 'calendar-day-cell';
+        grid.appendChild(emptyCell);
+      }
+
+      // 날짜 채우기
+      for (let date = 1; date <= lastDate; date++) {
+        const cell = document.createElement('div');
+        cell.className = 'calendar-day-cell';
+
+        const mStr = String(month + 1).padStart(2, '0');
+        const dStr = String(date).padStart(2, '0');
+        const dateKey = `${year}-${mStr}-${dStr}`;
+
+        cell.innerHTML = `<span>${date}</span>`;
+
+        // 작성된 일기가 있는 날짜 처리
+        if (writtenDatesSet.has(dateKey)) {
+          cell.classList.add('has-diary');
+          const dot = document.createElement('div');
+          dot.className = 'diary-dot';
+          cell.appendChild(dot);
+        }
+
+        grid.appendChild(cell);
+      }
+    }
+
+    // 달력 월 이동
+    window.changeMonth = (delta) => {
+      calendarDate.setMonth(calendarDate.getMonth() + delta);
+      renderCalendar();
+    };
+
+    // 일기 목록 불러오기 (최신 3개 한정)
     function loadDiaries() {
       const q = query(
         collection(db, "diaries"),
         where("uid", "==", currentUser.uid),
-        orderBy("createdAt", "desc")
+        orderBy("createdAt", "desc"),
+        limit(3) // 최근 3개 항목만 가져오기
       );
 
       onSnapshot(q, (snapshot) => {
@@ -460,25 +580,21 @@
       const data = diariesMap.get(docId);
       if (!data) return;
 
-      // 1. 임시 캔버스로 텍스트 및 이미지 실제 측정
       const calcCanvas = document.createElement('canvas');
       const calcCtx = calcCanvas.getContext('2d');
       const width = 600;
       calcCtx.font = '16px -apple-system, sans-serif';
 
-      let currentY = 110; // 날짜, 필명 아래 시작 위치
+      let currentY = 110;
 
-      // 한글 텍스트 높이 측정
       const korText = data.koreanContent || '';
       const korLines = Math.ceil(calcCtx.measureText(korText).width / (width - 110)) || 1;
       currentY += (korLines * 26) + 15;
 
-      // 번역 텍스트 높이 측정
       const engText = data.translatedContent || '';
       const engLines = Math.ceil(calcCtx.measureText(engText).width / (width - 110)) || 1;
       currentY += (engLines * 26) + 20;
 
-      // 이미지 객체 로드 및 높이 추가
       let imgObj = null;
       let imgHeight = 0;
       if (data.photoUrl) {
@@ -492,29 +608,24 @@
         if (imgObj.width) {
           const imgWidth = width - 60;
           imgHeight = imgWidth * (imgObj.height / imgObj.width);
-          currentY += imgHeight + 20; // 이미지 + 마진
+          currentY += imgHeight + 20;
         }
       }
 
-      // 최종 계산된 높이 (여백 30px 추가)
       const finalHeight = currentY + 10;
 
-      // 2. 실제 렌더링용 Canvas 생성
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       canvas.width = width;
       canvas.height = finalHeight;
 
-      // 배경
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, width, finalHeight);
 
-      // 테두리
       ctx.strokeStyle = '#e5e5ea';
       ctx.lineWidth = 4;
       ctx.strokeRect(10, 10, width - 20, finalHeight - 20);
 
-      // 날짜 & 필명
       ctx.fillStyle = '#8e8e93';
       ctx.font = '16px -apple-system, sans-serif';
       ctx.fillText(data.dateString || '', 30, 45);
@@ -523,7 +634,6 @@
       ctx.font = 'bold 18px -apple-system, sans-serif';
       ctx.fillText(`✍️ ${data.penName || currentPenName}`, 30, 75);
 
-      // 본문 작성
       let drawY = 110;
 
       ctx.fillStyle = '#000000';
@@ -538,12 +648,10 @@
       ctx.font = '16px -apple-system, sans-serif';
       drawY = wrapText(ctx, engText, 80, drawY, width - 110, 26) + 20;
 
-      // 이미지 출력
       if (imgObj && imgObj.width) {
         ctx.drawImage(imgObj, 30, drawY, width - 60, imgHeight);
       }
 
-      // 모달에 이미지 전달
       const dataUrl = canvas.toDataURL('image/png');
       const modalImg = document.getElementById('modal-img');
       modalImg.src = dataUrl;
