@@ -94,13 +94,19 @@
 
     /* 모달 공통 스타일 */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 20px; box-sizing: border-box; }
-    .modal-content { background: #fff; padding: 16px; border-radius: 16px; max-width: 90%; max-height: 90%; overflow-y: auto; text-align: center; }
+    .modal-content { background: #fff; padding: 20px; border-radius: 16px; max-width: 90%; max-height: 90%; overflow-y: auto; text-align: left; }
     .modal-content img { max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 12px; display: block; margin-left: auto; margin-right: auto; }
-    .modal-tip { font-size: 13px; color: #007aff; margin-bottom: 12px; font-weight: bold; }
+    .modal-tip { font-size: 13px; color: #007aff; margin-bottom: 12px; font-weight: bold; text-align: center; }
     
+    /* 약관 동의 모달 전용 스타일 */
+    .terms-box { background: #f9f9fb; border: 1px solid #e5e5ea; border-radius: 8px; padding: 12px; font-size: 12px; color: #48484a; line-height: 1.5; height: 180px; overflow-y: scroll; margin-bottom: 16px; }
+    .terms-box h5 { margin: 8px 0 4px 0; font-size: 13px; color: #1d1d1f; }
+    .terms-checkbox-group { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: bold; color: #1d1d1f; margin-bottom: 16px; cursor: pointer; }
+    .terms-checkbox-group input { width: 18px; height: 18px; margin: 0; cursor: pointer; }
+
     /* 삭제 모달 스타일 */
-    .delete-modal-title { font-size: 16px; font-weight: bold; color: #ff3b30; margin-bottom: 8px; }
-    .delete-modal-text { font-size: 14px; color: #333; margin-bottom: 16px; line-height: 1.4; }
+    .delete-modal-title { font-size: 16px; font-weight: bold; color: #ff3b30; margin-bottom: 8px; text-align: center; }
+    .delete-modal-text { font-size: 14px; color: #333; margin-bottom: 16px; line-height: 1.4; text-align: center; }
     .btn-delete-yes { background-color: #fff0f0; color: #ff3b30; border: 1px solid #ff3b30; font-weight: bold; font-size: 15px; }
     .btn-delete-yes:hover { background-color: #ff3b30; color: #fff; }
 
@@ -224,7 +230,7 @@
       <textarea id="english-input" placeholder="번역 결과가 여기에 표시됩니다..."></textarea>
     </div>
 
-    <!-- 3단계: 필사 사진 첨부 및 저장 (모바일 카메라/갤러리 접근 권한 보완) -->
+    <!-- 3단계: 필사 사진 첨부 및 저장 -->
     <div id="step3-box" class="step-box hidden">
       <div class="step-title">3단계: 필사 사진 첨부 및 일기 저장</div>
       <input type="file" id="photo-input" accept="image/*" onchange="handleFileChange(event)">
@@ -281,9 +287,46 @@
     <div id="diary-list"></div>
   </div>
 
+  <!-- 서비스 이용약관 및 개인정보 수집 동의 모달 (최초 로그인 시 1회 노출) -->
+  <div id="terms-modal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width:380px;">
+      <h3 style="margin-top:0; margin-bottom:12px; font-size:16px; color:#1d1d1f; text-align:center;">📋 이용약관 및 개인정보 동의</h3>
+      
+      <div class="terms-box">
+        <h5>1. 서비스 목적</h5>
+        '3 line diary'는 AI 번역 및 손필사를 통한 개인 영문 학습 지원 웹앱입니다.
+
+        <h5>2. 수집하는 개인정보 항목</h5>
+        - 필수항목: Google 계정 정보(이메일 주소, 기본 성명), 사용자 지정 필명<br>
+        - 작성항목: 한글 및 영문 일기 내용, 필사 사진 이미지 파일
+
+        <h5>3. 개인정보 수집 및 이용 목적</h5>
+        - 회원 식별 및 개인 일기 데이터 데이터베이스(Firestore) 안전 저장<br>
+        - 본인의 일기 기록 조회, 달력 관리 및 카드 이미지 생성 기능 제공<br>
+        - 관리자의 서비스 오류 대응 및 시스템 보안·품질 개선
+
+        <h5>4. 개인정보의 보유 및 이용 기간</h5>
+        사용자의 회원 탈퇴 시 또는 서비스 종료 시까지 안전하게 보관하며, 요청 시 즉시 파기됩니다.
+
+        <h5>5. 주의사항</h5>
+        일기 작성 시 본인 또는 타인의 주민등록번호, 비밀번호, 상세 주소 등 민감한 개인정보를 적지 않도록 주의해 주세요.
+      </div>
+
+      <label class="terms-checkbox-group">
+        <input type="checkbox" id="terms-checkbox">
+        <span>위 서비스 이용약관 및 개인정보 수집·이용 동의 (필수)</span>
+      </label>
+
+      <div style="display:flex; gap:8px;">
+        <button onclick="acceptTerms()" class="secondary" style="margin-bottom:0;">동의하고 시작하기</button>
+        <button onclick="rejectTerms()" class="outline" style="margin-bottom:0;">거부 (로그아웃)</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 이미지 공유/저장 모달 팝업 -->
   <div id="image-modal" class="modal-overlay hidden" onclick="closeModalOnOverlay(event)">
-    <div class="modal-content">
+    <div class="modal-content" style="text-align:center;">
       <div class="modal-tip">💡 이미지를 1초간 길게 눌러 [사진에 추가]를 선택하세요!</div>
       <img id="modal-img" src="" alt="일기 카드">
       <div style="display:flex; gap:8px;">
@@ -295,7 +338,7 @@
 
   <!-- 일기 삭제 확인 모달 팝업 -->
   <div id="delete-modal" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width:320px;">
+    <div class="modal-content" style="max-width:320px; text-align:center;">
       <div class="delete-modal-title">⚠️ 일기 삭제</div>
       <div class="delete-modal-text">삭제한 일기는 다시 되돌릴 수 없습니다.<br>정말 삭제하시겠습니까?</div>
       <div style="display:flex; gap:8px;">
@@ -349,28 +392,90 @@
     let targetDeleteDocId = null;
     let isRandomMode = false;
 
-    // 로그인 상태 감지 (로딩 화면 제어로 깜빡임 회피)
+    // 로그인 상태 감지 및 약관 동의 체크
     onAuthStateChanged(auth, async (user) => {
       document.getElementById('loading-section').classList.add('hidden');
 
       if (user) {
         currentUser = user;
-        document.getElementById('login-section').classList.add('hidden');
-        document.getElementById('app-section').classList.remove('hidden');
-        document.getElementById('calendar-section').classList.remove('hidden');
-        document.getElementById('list-section').classList.remove('hidden');
         
-        await loadUserProfile();
-        loadAllDiaryDates();
-        loadDiaries();
+        // 사용자의 약관 동의 상태 확인
+        const hasAgreed = await checkTermsAgreement(user.uid);
+
+        if (!hasAgreed) {
+          // 약관 미동의 시 동의 모달만 노출
+          document.getElementById('login-section').classList.add('hidden');
+          document.getElementById('app-section').classList.add('hidden');
+          document.getElementById('calendar-section').classList.add('hidden');
+          document.getElementById('list-section').classList.add('hidden');
+          document.getElementById('terms-modal').classList.remove('hidden');
+        } else {
+          // 동의 완료 시 메인 화면 진입
+          document.getElementById('terms-modal').classList.add('hidden');
+          document.getElementById('login-section').classList.add('hidden');
+          document.getElementById('app-section').classList.remove('hidden');
+          document.getElementById('calendar-section').classList.remove('hidden');
+          document.getElementById('list-section').classList.remove('hidden');
+          
+          await loadUserProfile();
+          loadAllDiaryDates();
+          loadDiaries();
+        }
       } else {
         currentUser = null;
+        document.getElementById('terms-modal').classList.add('hidden');
         document.getElementById('login-section').classList.remove('hidden');
         document.getElementById('app-section').classList.add('hidden');
         document.getElementById('calendar-section').classList.add('hidden');
         document.getElementById('list-section').classList.add('hidden');
       }
     });
+
+    // DB에서 사용자 동의 여부 확인
+    async function checkTermsAgreement(uid) {
+      try {
+        const userDocRef = doc(db, "users", uid);
+        const userDoc = await getDoc(userDocRef);
+        return userDoc.exists() && userDoc.data().agreedToTerms === true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    // 약관 동의 버튼 클릭 시
+    window.acceptTerms = async () => {
+      const checkbox = document.getElementById('terms-checkbox');
+      if (!checkbox.checked) {
+        alert("이용약관 및 개인정보 수집·이용에 동의해 주세요.");
+        return;
+      }
+
+      try {
+        await setDoc(doc(db, "users", currentUser.uid), {
+          email: currentUser.email || '',
+          penName: currentUser.displayName || "익명 작가",
+          agreedToTerms: true,
+          agreedAt: serverTimestamp()
+        }, { merge: true });
+
+        document.getElementById('terms-modal').classList.add('hidden');
+        document.getElementById('app-section').classList.remove('hidden');
+        document.getElementById('calendar-section').classList.remove('hidden');
+        document.getElementById('list-section').classList.remove('hidden');
+
+        await loadUserProfile();
+        loadAllDiaryDates();
+        loadDiaries();
+      } catch (e) {
+        alert("동의 처리 중 오류가 발생했습니다: " + e.message);
+      }
+    };
+
+    // 약관 거부 버튼 클릭 시 (로그아웃)
+    window.rejectTerms = () => {
+      alert("약관에 동의하지 않으시면 서비스를 이용하실 수 없습니다.");
+      signOut(auth);
+    };
 
     // 구글 로그인
     window.loginWithGoogle = () => {
@@ -518,7 +623,6 @@
             let width = img.width;
             let height = img.height;
             
-            // 용량 초과 방지를 위해 최대 해상도를 600px로 제한
             const max_size = 600;
 
             if (width > height) {
@@ -538,7 +642,6 @@
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
 
-            // 화질 압축률 0.6 적용 (Base64 용량 300~500KB 이하 유지)
             const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
             resolve(dataUrl);
           };
