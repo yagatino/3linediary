@@ -145,7 +145,7 @@
       </div>
     </div>
 
-    <!-- 1. 철학 및 배경: 3 line diary로 기대하는 것 (제목 축소 반영) -->
+    <!-- 1. 철학 및 배경: 3 line diary로 기대하는 것 -->
     <details class="accordion-details philosophy">
       <summary class="accordion-summary philosophy">
         💡 3 line diary로 기대하는 것 (클릭-펼치기)
@@ -177,7 +177,7 @@
       </div>
     </details>
 
-    <!-- 2. 사용 방법: 3 line diary 사용법 (제목 축소 반영) -->
+    <!-- 2. 사용 방법: 3 line diary 사용법 -->
     <details class="accordion-details help">
       <summary class="accordion-summary help">
         📖 3 line diary 사용법 (클릭-펼치기)
@@ -503,7 +503,7 @@
       }
     };
 
-    // 이미지 리사이징
+    // 이미지 리사이징 (안드로이드 고해상도 사진 용량 압축 강화)
     function resizeAndConvertBase64(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -515,7 +515,9 @@
             const canvas = document.createElement('canvas');
             let width = img.width;
             let height = img.height;
-            const max_size = 800;
+            
+            // 용량 초과 방지를 위해 최대 해상도를 600px로 제한
+            const max_size = 600;
 
             if (width > height) {
               if (width > max_size) {
@@ -534,12 +536,13 @@
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
 
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+            // 화질 압축률 0.6 적용 (Base64 용량 300~500KB 이하 유지)
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
             resolve(dataUrl);
           };
-          img.onerror = (err) => reject(err);
+          img.onerror = (err) => reject(new Error("이미지 로드에 실패했습니다."));
         };
-        reader.onerror = (err) => reject(err);
+        reader.onerror = (err) => reject(new Error("파일 읽기에 실패했습니다."));
       });
     }
 
@@ -592,7 +595,8 @@
 
       } catch (error) {
         console.error("저장 오류:", error);
-        alert("저장 중 오류가 발생했습니다: " + error.message);
+        const errMsg = error.message || (typeof error === 'string' ? error : JSON.stringify(error));
+        alert("저장 중 오류가 발생했습니다: " + (errMsg || "이미지 용량이 너무 크거나 네트워크 오류입니다."));
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerText = "일기 저장하기 👏";
