@@ -23,6 +23,10 @@
     button:disabled { background-color: #ccc; cursor: not-allowed; }
     .hidden { display: none !important; }
     
+    /* 상단 누적 일기 카운트 배지 */
+    .total-counter-badge { display: flex; align-items: center; justify-content: center; gap: 6px; background-color: #eef7ee; color: #2e7d32; border: 1px solid #c8e6c9; padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; margin-bottom: 16px; text-align: center; }
+    .total-counter-badge span.count-num { color: #1b5e20; font-size: 15px; text-decoration: underline; }
+
     /* 로딩 화면 스타일 */
     .loading-box { text-align: center; padding: 40px 20px; color: #8e8e93; font-size: 14px; }
     .spinner { width: 28px; height: 28px; border: 3px solid #e5e5ea; border-top: 3px solid #007aff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 12px auto; }
@@ -117,6 +121,11 @@
   </style>
 </head>
 <body>
+
+  <!-- 상단 공통: 지금까지 함께 쌓은 세 줄 일기 카운터 배지 -->
+  <div class="total-counter-badge">
+    🌱 지금까지 함께 쌓은 세 줄 일기: <span id="total-diary-count" class="count-num">-</span>편
+  </div>
 
   <!-- 0. 로딩 대기 화면 -->
   <div id="loading-section" class="card loading-box">
@@ -287,7 +296,7 @@
     <div id="diary-list"></div>
   </div>
 
-  <!-- 서비스 이용약관 및 개인정보 수집 동의 모달 (최초 로그인 시 1회 노출) -->
+  <!-- 서비스 이용약관 및 개인정보 수집 동의 모달 -->
   <div id="terms-modal" class="modal-overlay hidden">
     <div class="modal-content" style="max-width:380px;">
       <h3 style="margin-top:0; margin-bottom:12px; font-size:16px; color:#1d1d1f; text-align:center;">📋 이용약관 및 개인정보 동의</h3>
@@ -362,7 +371,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, doc, setDoc, getDoc, deleteDoc, query, where, orderBy, limit, getDocs, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, doc, setDoc, getDoc, deleteDoc, query, where, orderBy, limit, getDocs, onSnapshot, getCountFromServer, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     // Firebase 설정 정보
     const firebaseConfig = {
@@ -392,6 +401,22 @@
     let targetDeleteDocId = null;
     let isRandomMode = false;
 
+    // 전체 일기 누적 개수 실시간/서버 카운트 함수 (로그인 여부 무관)
+    async function fetchTotalDiaryCount() {
+      try {
+        const coll = collection(db, "diaries");
+        const snapshot = await getCountFromServer(coll);
+        const total = snapshot.data().count;
+        document.getElementById('total-diary-count').innerText = total.toLocaleString();
+      } catch (e) {
+        console.error("전체 일기 수 로드 실패:", e);
+        document.getElementById('total-diary-count').innerText = "0";
+      }
+    }
+
+    // 앱 시작 시 전체 일기 수 즉시 로드
+    fetchTotalDiaryCount();
+
     // 로그인 상태 감지 및 약관 동의 체크
     onAuthStateChanged(auth, async (user) => {
       document.getElementById('loading-section').classList.add('hidden');
@@ -399,18 +424,15 @@
       if (user) {
         currentUser = user;
         
-        // 사용자의 약관 동의 상태 확인
         const hasAgreed = await checkTermsAgreement(user.uid);
 
         if (!hasAgreed) {
-          // 약관 미동의 시 동의 모달만 노출
           document.getElementById('login-section').classList.add('hidden');
           document.getElementById('app-section').classList.add('hidden');
           document.getElementById('calendar-section').classList.add('hidden');
           document.getElementById('list-section').classList.add('hidden');
           document.getElementById('terms-modal').classList.remove('hidden');
         } else {
-          // 동의 완료 시 메인 화면 진입
           document.getElementById('terms-modal').classList.add('hidden');
           document.getElementById('login-section').classList.add('hidden');
           document.getElementById('app-section').classList.remove('hidden');
@@ -611,7 +633,7 @@
       }
     };
 
-    // 이미지 리사이징 (안드로이드 고해상도 사진 용량 및 읽기 오류 방지)
+    // 이미지 리사이징
     function resizeAndConvertBase64(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -698,6 +720,9 @@
         submitBtn.classList.add('hidden');
 
         alert("일기가 성공적으로 저장되었습니다!");
+
+        // 누적 일기 수 즉시 갱신
+        fetchTotalDiaryCount();
 
       } catch (error) {
         console.error("저장 오류:", error);
@@ -1003,6 +1028,7 @@
         await deleteDoc(doc(db, "diaries", targetDeleteDocId));
         alert("일기가 삭제되었습니다.");
         closeDeleteModal();
+        fetchTotalDiaryCount(); // 삭제 시 카운트 갱신
         if (isRandomMode) {
           loadRandomDiary();
         }
