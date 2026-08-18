@@ -99,11 +99,11 @@
     .modal-content img { max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 12px; display: block; margin-left: auto; margin-right: auto; }
     .modal-tip { font-size: 13px; color: #007aff; margin-bottom: 12px; font-weight: bold; text-align: center; }
     
-    /* 약관 모달 */
-    .terms-box { background: #f9f9fb; border: 1px solid #e5e5ea; border-radius: 8px; padding: 12px; font-size: 12px; color: #48484a; line-height: 1.5; height: 180px; overflow-y: scroll; margin-bottom: 16px; }
+    /* 약관 모달 전용 스타일 */
+    .terms-box { background: #f9f9fb; border: 1px solid #e5e5ea; border-radius: 8px; padding: 12px; font-size: 12px; color: #48484a; line-height: 1.6; height: 200px; overflow-y: scroll; margin-bottom: 14px; }
     .terms-box h5 { margin: 8px 0 4px 0; font-size: 13px; color: #1d1d1f; }
-    .terms-checkbox-group { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: bold; color: #1d1d1f; margin-bottom: 16px; cursor: pointer; }
-    .terms-checkbox-group input { width: 18px; height: 18px; margin: 0; cursor: pointer; }
+    .terms-checkbox-group { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; font-weight: bold; color: #1d1d1f; margin-bottom: 10px; cursor: pointer; line-height: 1.4; }
+    .terms-checkbox-group input { width: 18px; height: 18px; margin: 0; margin-top: 2px; cursor: pointer; flex-shrink: 0; }
 
     /* 성실왕 모달 및 랭킹 테이블 */
     .ranking-card { background: #fff; border-radius: 12px; border: 1px solid #e5e5ea; overflow: hidden; margin-top: 12px; max-height: 300px; overflow-y: auto; }
@@ -121,7 +121,8 @@
 
     /* 푸터 */
     footer { text-align: center; padding: 20px 0 30px 0; font-size: 12px; color: #8e8e93; }
-    .feedback-link { display: inline-block; margin-bottom: 10px; padding: 8px 16px; background-color: #f0f0f7; color: #007aff; text-decoration: none; border-radius: 20px; font-weight: bold; font-size: 13px; }
+    .feedback-link { display: inline-block; margin-bottom: 6px; padding: 8px 16px; background-color: #f0f0f7; color: #007aff; text-decoration: none; border-radius: 20px; font-weight: bold; font-size: 13px; }
+    .dpo-footer { font-size: 11px; color: #aeaeb2; margin-top: 4px; line-height: 1.4; }
   </style>
 </head>
 <body>
@@ -278,21 +279,47 @@
     </div>
   </div>
 
-  <!-- 약관 동의 모달 -->
+  <!-- 개인정보 처리방침 및 약관 동의 모달 (법적 기준 보완) -->
   <div id="terms-modal" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width:380px;">
-      <h3 style="margin-top:0; margin-bottom:12px; font-size:16px; color:#1d1d1f; text-align:center;">📋 이용약관 및 개인정보 동의</h3>
+    <div class="modal-content" style="max-width:400px;">
+      <h3 style="margin-top:0; margin-bottom:10px; font-size:16px; color:#1d1d1f; text-align:center;">📋 이용약관 및 개인정보 처리방침</h3>
+      
       <div class="terms-box">
-        <h5>1. 서비스 목적</h5>'3 line diary'는 AI 번역 및 손필사를 통한 개인 영문 학습 지원 웹앱입니다.
-        <h5>2. 수집하는 개인정보 항목</h5>Google 계정 정보, 사용자 지정 필명, 일기 내용, 필사 사진 파일
-        <h5>3. 개인정보 수집 및 이용 목적</h5>회원 식별 및 개인 일기 저장, 달력 관리, 카드 이미지 생성
-        <h5>4. 보유 및 이용 기간</h5>회원 탈퇴 시 또는 서비스 종료 시까지
+        <h5>1. 개인정보 처리 목적 및 수집 항목</h5>
+        • 수집 항목: Google 계정 이메일, 기본 성명, 사용자 지정 필명, 일기 내용(한글/영문), 필사 사진 파일<br>
+        • 처리 목적: 회원 식별, 개인 일기 DB 안전 저장, 달력 조회 및 필사 카드 이미지 생성
+
+        <h5>2. 개인정보의 보유 및 파기</h5>
+        • 이용자의 탈퇴 요청 시 또는 서비스 종료 시까지 안전하게 보관하며, 요청 시 지체 없이 파기합니다.
+
+        <h5>3. 개인정보 국외 이전 및 처리 위탁</h5>
+        원활한 서비스 제공을 위해 아래와 같이 처리를 위탁/국외 이전합니다.<br>
+        • 데이터 저장/인증: Google LLC (Google Firebase Cloud Firestore / 미국)<br>
+        • AI 자동 번역: Translated S.r.l. (MyMemory API / 이탈리아) - 전송항목: 한글 일기 텍스트
+
+        <h5>4. 개인정보 안전성 확보 조치</h5>
+        • 전송 구간 암호화(HTTPS/TLS) 및 데이터베이스 접근 제어를 통해 안전하게 관리됩니다.
+
+        <h5>5. 정보주체의 권리 및 행사 방법</h5>
+        • 이용자는 언제든지 일기 열람·수정·삭제가 가능하며, 계정 탈퇴 및 전체 데이터 파기 요청은 아래 보호책임자에게 이메일로 요청하실 수 있습니다.
+
+        <h5>6. 개인정보 보호책임자</h5>
+        • 성명/직책: 박승훈 (교사)<br>
+        • 문의 및 삭제 요청 이메일: yagatino@gmail.com
       </div>
+
+      <!-- 만 14세 이상 또는 보호자 동의 확인 -->
+      <label class="terms-checkbox-group">
+        <input type="checkbox" id="age-checkbox">
+        <span>[필수] 만 14세 이상이거나, 학교/보호자의 안내 및 동의를 받았습니다.</span>
+      </label>
+
       <label class="terms-checkbox-group">
         <input type="checkbox" id="terms-checkbox">
-        <span>위 서비스 이용약관 및 개인정보 수집·이용 동의 (필수)</span>
+        <span>[필수] 이용약관 및 개인정보 수집·이용(국외이전 포함)에 동의합니다.</span>
       </label>
-      <div style="display:flex; gap:8px;">
+
+      <div style="display:flex; gap:8px; margin-top:14px;">
         <button onclick="acceptTerms()" class="secondary" style="margin-bottom:0;">동의하고 시작하기</button>
         <button onclick="rejectTerms()" class="outline" style="margin-bottom:0;">거부 (로그아웃)</button>
       </div>
@@ -330,7 +357,8 @@
         💬 문의 및 개선 의견 보내기
       </a>
     </div>
-    © 2026 Park Seunghoon. All rights reserved.
+    <div>© 2026 Park Seunghoon. All rights reserved.</div>
+    <div class="dpo-footer">개인정보 보호책임자: 박승훈 (yagatino@gmail.com)</div>
   </footer>
 
   <!-- Firebase SDK 모듈 로드 -->
@@ -339,7 +367,7 @@
     import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, collection, addDoc, doc, setDoc, getDoc, deleteDoc, query, where, orderBy, limit, getDocs, onSnapshot, getCountFromServer, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // ⭐️ 관리자(선생님) 이메일 목록
+    // ⭐️ 관리자(선생님) 이메일
     const ADMIN_EMAILS = ["yagatino@gmail.com"];
 
     const firebaseConfig = {
@@ -409,7 +437,7 @@
           document.getElementById('list-section').classList.remove('hidden');
           
           await loadUserProfile();
-          loadMonthDiaryDates(); // ⭐️ 해당 월 날짜만 온디맨드 로드
+          loadMonthDiaryDates();
           loadDiaries();
         }
       } else {
@@ -435,8 +463,15 @@
     }
 
     window.acceptTerms = async () => {
-      const checkbox = document.getElementById('terms-checkbox');
-      if (!checkbox.checked) {
+      const ageCheckbox = document.getElementById('age-checkbox');
+      const termsCheckbox = document.getElementById('terms-checkbox');
+
+      if (!ageCheckbox.checked) {
+        alert("만 14세 이상 또는 보호자/학교 동의 여부를 확인해 주세요.");
+        return;
+      }
+
+      if (!termsCheckbox.checked) {
         alert("이용약관 및 개인정보 수집·이용에 동의해 주세요.");
         return;
       }
@@ -446,6 +481,7 @@
           email: currentUser.email || '',
           penName: currentUser.displayName || "익명 작가",
           agreedToTerms: true,
+          agreedAgeOrParentConsent: true,
           agreedAt: serverTimestamp()
         }, { merge: true });
 
@@ -675,7 +711,6 @@
       }
     };
 
-    // ⭐️ [최적화 1] 해당 월의 일기 날짜만 온디맨드로 쿼리
     function loadMonthDiaryDates() {
       if (!currentUser) return;
       if (calendarUnsubscribe) calendarUnsubscribe();
@@ -703,7 +738,7 @@
         });
         renderCalendar();
       }, (err) => {
-        console.warn("달력 쿼리 인덱스 대기/폴백 로드:", err);
+        console.warn("달력 쿼리 대기:", err);
       });
     }
 
@@ -753,7 +788,6 @@
       }
     }
 
-    // ⭐️ [최적화 2] 선택한 하루 치 일기만 정확히 타겟팅 쿼리
     async function loadDiariesByDate(year, month, day) {
       const listContainer = document.getElementById('diary-list');
       const listTitle = document.getElementById('list-title');
@@ -882,7 +916,7 @@
 
     window.changeMonth = (delta) => {
       calendarDate.setMonth(calendarDate.getMonth() + delta);
-      loadMonthDiaryDates(); // 달 이동 시 해당 월 쿼리 즉시 갱신
+      loadMonthDiaryDates();
     };
 
     function loadDiaries() {
@@ -927,7 +961,7 @@
       }
     };
 
-    // ⭐️ [최적화 3] 🏆 성실왕 랭킹: 선택한 '한 달치'만 기간 쿼리
+    // 🏆 성실왕 랭킹
     window.openRankingModal = () => {
       initRankingDropdowns();
       document.getElementById('ranking-modal').classList.remove('hidden');
@@ -1172,4 +1206,5 @@
     };
   </script>
 </body>
+</html>
 </html>
