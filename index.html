@@ -15,7 +15,7 @@
     .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
     textarea, input[type="file"], input[type="text"], select { width: 100%; margin-top: 8px; margin-bottom: 12px; box-sizing: border-box; }
     
-    /* 텍스트 영역: 내용에 맞춰 자동 확장되도록 overflow:hidden 및 최소 높이 설정 */
+    /* 텍스트 영역: 내용에 맞춰 자동 확장 */
     textarea { 
       min-height: 80px; 
       padding: 10px; 
@@ -33,6 +33,7 @@
     button.danger { background-color: #ff3b30; }
     button.outline { background-color: transparent; color: #007aff; border: 1px solid #007aff; }
     button.admin-btn { background-color: #ff9500; color: white; font-size: 12px; padding: 6px 10px; width: auto; margin-bottom: 0; }
+    button.admin-link-btn { background-color: #5856d6; color: white; font-size: 12px; padding: 6px 10px; width: auto; margin-bottom: 0; text-decoration: none; display: inline-block; border-radius: 8px; font-weight: bold; }
     button:disabled { background-color: #ccc; cursor: not-allowed; }
     .hidden { display: none !important; }
     
@@ -160,10 +161,12 @@
   <!-- 2. 일기 작성 및 메인 화면 -->
   <div id="app-section" class="card hidden">
     <div class="header-bar">
-      <div>
+      <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
         <span id="user-info" class="user-nick"></span>
-        <button onclick="togglePenNameModal()" class="outline" style="width:auto; padding:4px 8px; font-size:11px; margin-left:6px; margin-bottom:0;">필명 설정</button>
+        <button onclick="togglePenNameModal()" class="outline" style="width:auto; padding:4px 8px; font-size:11px; margin-bottom:0;">필명 설정</button>
+        <!-- 관리자 전용 버튼들 -->
         <button id="admin-ranking-btn" onclick="openRankingModal()" class="admin-btn hidden">🏆 이달의 성실왕</button>
+        <button id="admin-inspect-btn" onclick="openAdminConsole()" class="admin-link-btn hidden">📋 전체 학생 일기 검사</button>
       </div>
       <button onclick="logout()" style="width:auto; padding:6px 12px; font-size:12px; background-color:#ff3b30; margin-bottom:0;">로그아웃</button>
     </div>
@@ -247,11 +250,11 @@
     <div class="calendar-grid" id="calendar-grid"></div>
   </div>
 
-  <!-- 일기 목록 화면 -->
+  <!-- 일기 목록 화면 (최신 1개 / 랜덤 1개) -->
   <div id="list-section" class="card hidden">
     <div class="list-header-group">
       <div class="list-header-top">
-        <h3 id="list-title">최근 작성한 일기 (최신 3개)</h3>
+        <h3 id="list-title">최근 작성한 일기 (1개)</h3>
         <div class="toggle-container">
           <span id="label-recent" class="toggle-label active">최근</span>
           <label class="switch">
@@ -375,7 +378,7 @@
     <div class="dpo-footer">개인정보 보호책임자: 박승훈 (yagatino@gmail.com)</div>
   </footer>
 
-  <!-- 텍스트 영역 높이 자동 조절 전역 함수 -->
+  <!-- 텍스트 영역 높이 자동 조절 함수 -->
   <script>
     function autoResizeTextarea(textarea) {
       if (!textarea) return;
@@ -390,7 +393,7 @@
     import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, collection, addDoc, doc, setDoc, getDoc, deleteDoc, query, where, orderBy, limit, getDocs, onSnapshot, getCountFromServer, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // ⭐️ 관리자 이메일
+    // ⭐️ 관리자 이메일 목록
     const ADMIN_EMAILS = ["yagatino@gmail.com"];
 
     const firebaseConfig = {
@@ -420,6 +423,12 @@
     let isRandomMode = false;
     let calendarUnsubscribe = null;
 
+    // 관리자 전용 Firebase 콘솔 바로가기 함수
+    window.openAdminConsole = () => {
+      const consoleUrl = `https://console.firebase.google.com/project/${firebaseConfig.projectId}/firestore/databases/-default-/data/~2Fdiaries`;
+      window.open(consoleUrl, '_blank');
+    };
+
     async function fetchTotalDiaryCount() {
       try {
         const coll = collection(db, "diaries");
@@ -438,10 +447,13 @@
       if (user) {
         currentUser = user;
         
+        // 관리자 전용 버튼 제어
         if (ADMIN_EMAILS.includes(user.email)) {
           document.getElementById('admin-ranking-btn').classList.remove('hidden');
+          document.getElementById('admin-inspect-btn').classList.remove('hidden');
         } else {
           document.getElementById('admin-ranking-btn').classList.add('hidden');
+          document.getElementById('admin-inspect-btn').classList.add('hidden');
         }
 
         const hasAgreed = await checkTermsAgreement(user.uid);
@@ -460,13 +472,14 @@
           document.getElementById('list-section').classList.remove('hidden');
           
           await loadUserProfile();
-          loadMonthDiaryDates();
+          loadUserAllDiaryDates(); // ⭐️ 사용자가 일기 쓴 모든 날짜 로드
           loadDiaries();
         }
       } else {
         currentUser = null;
         if (calendarUnsubscribe) calendarUnsubscribe();
         document.getElementById('admin-ranking-btn').classList.add('hidden');
+        document.getElementById('admin-inspect-btn').classList.add('hidden');
         document.getElementById('terms-modal').classList.add('hidden');
         document.getElementById('login-section').classList.remove('hidden');
         document.getElementById('app-section').classList.add('hidden');
@@ -514,7 +527,7 @@
         document.getElementById('list-section').classList.remove('hidden');
 
         await loadUserProfile();
-        loadMonthDiaryDates();
+        loadUserAllDiaryDates();
         loadDiaries();
       } catch (e) {
         alert("동의 처리 중 오류: " + e.message);
@@ -634,7 +647,6 @@
         document.getElementById('step2-box').classList.remove('hidden');
         document.getElementById('step3-box').classList.remove('hidden');
 
-        // 번역문 길이에 맞춰 높이 자동 확장
         autoResizeTextarea(englishTextarea);
 
       } catch (e) {
@@ -724,7 +736,6 @@
           dateString: dateString
         });
 
-        // 텍스트 영역 비우기 및 높이 초기화
         koreanTextarea.value = "";
         koreanTextarea.style.height = "auto";
         englishTextarea.value = "";
@@ -738,6 +749,7 @@
 
         alert("일기가 성공적으로 저장되었습니다!");
         fetchTotalDiaryCount();
+        loadUserAllDiaryDates();
       } catch (error) {
         alert("저장 오류: " + error.message);
       } finally {
@@ -746,21 +758,12 @@
       }
     };
 
-    function loadMonthDiaryDates() {
+    // ⭐️ [달력 복원] 사용자가 쓴 모든 일기 날짜를 정확히 수집하여 달력에 표시
+    function loadUserAllDiaryDates() {
       if (!currentUser) return;
       if (calendarUnsubscribe) calendarUnsubscribe();
 
-      const year = calendarDate.getFullYear();
-      const month = calendarDate.getMonth();
-      const startOfMonth = new Date(year, month, 1, 0, 0, 0);
-      const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59);
-
-      const q = query(
-        collection(db, "diaries"),
-        where("uid", "==", currentUser.uid),
-        where("createdAt", ">=", Timestamp.fromDate(startOfMonth)),
-        where("createdAt", "<=", Timestamp.fromDate(endOfMonth))
-      );
+      const q = query(collection(db, "diaries"), where("uid", "==", currentUser.uid));
 
       calendarUnsubscribe = onSnapshot(q, (snapshot) => {
         writtenDatesSet.clear();
@@ -772,8 +775,6 @@
           }
         });
         renderCalendar();
-      }, (err) => {
-        console.warn("달력 쿼리 대기:", err);
       });
     }
 
@@ -807,6 +808,7 @@
         const dateKey = `${year}-${month + 1}-${date}`;
         cell.innerHTML = `<span>${date}</span>`;
 
+        // ⭐️ 작성한 날짜는 초록색 점 표시 & 클릭 이벤트 활성화
         if (writtenDatesSet.has(dateKey)) {
           cell.classList.add('has-diary');
           const dot = document.createElement('div');
@@ -823,6 +825,7 @@
       }
     }
 
+    // ⭐️ [날짜 클릭 시] 해당 날짜에 작성한 일기 불러오기
     async function loadDiariesByDate(year, month, day) {
       const listContainer = document.getElementById('diary-list');
       const listTitle = document.getElementById('list-title');
@@ -833,31 +836,35 @@
       listTitle.innerText = `${year}년 ${month}월 ${day}일 일기`;
       resetBtn.classList.remove('hidden');
 
-      const startOfDay = new Date(year, month - 1, day, 0, 0, 0);
-      const endOfDay = new Date(year, month - 1, day, 23, 59, 59);
-
       try {
-        const q = query(
-          collection(db, "diaries"),
-          where("uid", "==", currentUser.uid),
-          where("createdAt", ">=", Timestamp.fromDate(startOfDay)),
-          where("createdAt", "<=", Timestamp.fromDate(endOfDay)),
-          orderBy("createdAt", "desc")
-        );
-
+        const q = query(collection(db, "diaries"), where("uid", "==", currentUser.uid));
         const snapshot = await getDocs(q);
         listContainer.innerHTML = "";
 
-        if (snapshot.empty) {
-          listContainer.innerHTML = "<p>해당 날짜에 작성된 일기가 없습니다.</p>";
-          return;
-        }
+        let matchCount = 0;
+        const matchedDocs = [];
 
         snapshot.forEach(docSnap => {
           const data = docSnap.data();
-          diariesMap.set(docSnap.id, data);
-          renderDiaryCard(listContainer, docSnap.id, data);
+          if (data.createdAt && data.createdAt.toDate) {
+            const d = data.createdAt.toDate();
+            if (d.getFullYear() === year && (d.getMonth() + 1) === month && d.getDate() === day) {
+              matchedDocs.push({ id: docSnap.id, data: data, time: d.getTime() });
+            }
+          }
         });
+
+        matchedDocs.sort((a, b) => b.time - a.time);
+
+        matchedDocs.forEach(item => {
+          matchCount++;
+          diariesMap.set(item.id, item.data);
+          renderDiaryCard(listContainer, item.id, item.data);
+        });
+
+        if (matchCount === 0) {
+          listContainer.innerHTML = "<p>해당 날짜에 작성된 일기가 없습니다.</p>";
+        }
 
         document.getElementById('list-section').scrollIntoView({ behavior: 'smooth' });
       } catch (e) {
@@ -886,12 +893,13 @@
       }
     };
 
+    // ⭐️ [랜덤 모드] 무작위 1개 추출
     window.loadRandomDiary = async () => {
       if (!currentUser) return;
       const listContainer = document.getElementById('diary-list');
       listContainer.innerHTML = "<p>랜덤 일기를 불러오는 중...</p>";
       try {
-        const q = query(collection(db, "diaries"), where("uid", "==", currentUser.uid), limit(50));
+        const q = query(collection(db, "diaries"), where("uid", "==", currentUser.uid));
         const snapshot = await getDocs(q);
         if (snapshot.empty) {
           listContainer.innerHTML = "<p>작성된 일기가 없습니다.</p>";
@@ -930,7 +938,7 @@
     window.resetDiaryList = () => {
       selectedDateKey = null;
       document.getElementById('reset-list-btn').classList.add('hidden');
-      document.getElementById('list-title').innerText = "최근 작성한 일기 (최신 3개)";
+      document.getElementById('list-title').innerText = "최근 작성한 일기 (1개)";
       renderCalendar();
       loadDiaries();
     };
@@ -940,7 +948,7 @@
       calendarDate = new Date(now.getFullYear(), now.getMonth(), 1);
       const todayKey = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
       selectedDateKey = todayKey;
-      loadMonthDiaryDates();
+      renderCalendar();
 
       if (writtenDatesSet.has(todayKey)) {
         loadDiariesByDate(now.getFullYear(), now.getMonth() + 1, now.getDate());
@@ -951,11 +959,12 @@
 
     window.changeMonth = (delta) => {
       calendarDate.setMonth(calendarDate.getMonth() + delta);
-      loadMonthDiaryDates();
+      renderCalendar();
     };
 
+    // ⭐️ [최근 일기] 최신 1개만 로드 (limit: 1)
     function loadDiaries() {
-      const q = query(collection(db, "diaries"), where("uid", "==", currentUser.uid), orderBy("createdAt", "desc"), limit(3));
+      const q = query(collection(db, "diaries"), where("uid", "==", currentUser.uid), orderBy("createdAt", "desc"), limit(1));
       onSnapshot(q, (snapshot) => {
         if (selectedDateKey || isRandomMode) return;
         const listContainer = document.getElementById('diary-list');
@@ -990,13 +999,14 @@
         alert("일기가 삭제되었습니다.");
         closeDeleteModal();
         fetchTotalDiaryCount();
+        loadUserAllDiaryDates();
         if (isRandomMode) loadRandomDiary();
       } catch (error) {
         alert("삭제 오류: " + error.message);
       }
     };
 
-    // 🏆 성실왕 랭킹
+    // 🏆 성실왕 랭킹 집계
     window.openRankingModal = () => {
       initRankingDropdowns();
       document.getElementById('ranking-modal').classList.remove('hidden');
@@ -1041,17 +1051,8 @@
 
       container.innerHTML = `<div style="text-align:center; padding:20px; color:#007aff;">데이터 집계 중...</div>`;
 
-      const startOfMonth = new Date(targetYear, targetMonth - 1, 1, 0, 0, 0);
-      const endOfMonth = new Date(targetYear, targetMonth, 0, 23, 59, 59);
-
       try {
-        const q = query(
-          collection(db, "diaries"),
-          where("createdAt", ">=", Timestamp.fromDate(startOfMonth)),
-          where("createdAt", "<=", Timestamp.fromDate(endOfMonth))
-        );
-
-        const snapshot = await getDocs(q);
+        const snapshot = await getDocs(collection(db, "diaries"));
         const userStats = new Map();
 
         snapshot.forEach(docSnap => {
@@ -1061,11 +1062,13 @@
 
           if (data.createdAt && data.createdAt.toDate) {
             const d = data.createdAt.toDate();
-            if (!userStats.has(uid)) {
-              userStats.set(uid, { penName: penName, dates: new Set() });
+            if (d.getFullYear() === targetYear && (d.getMonth() + 1) === targetMonth) {
+              if (!userStats.has(uid)) {
+                userStats.set(uid, { penName: penName, dates: new Set() });
+              }
+              userStats.get(uid).dates.add(d.getDate());
+              userStats.get(uid).penName = penName;
             }
-            userStats.get(uid).dates.add(d.getDate());
-            userStats.get(uid).penName = penName;
           }
         });
 
