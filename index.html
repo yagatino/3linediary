@@ -33,13 +33,19 @@
     button.danger { background-color: #ff3b30; }
     button.outline { background-color: transparent; color: #007aff; border: 1px solid #007aff; }
     button.admin-btn { background-color: #ff9500; color: white; font-size: 12px; padding: 6px 10px; width: auto; margin-bottom: 0; }
-    button.admin-link-btn { background-color: #5856d6; color: white; font-size: 12px; padding: 6px 10px; width: auto; margin-bottom: 0; text-decoration: none; display: inline-block; border-radius: 8px; font-weight: bold; }
+    button.admin-link-btn { background-color: #5856d6; color: white; font-size: 12px; padding: 6px 10px; width: auto; margin-bottom: 0; }
     button:disabled { background-color: #ccc; cursor: not-allowed; }
     .hidden { display: none !important; }
     
     /* 상단 누적 일기 카운트 배지 */
     .total-counter-badge { display: flex; align-items: center; justify-content: center; gap: 6px; background-color: #eef7ee; color: #2e7d32; border: 1px solid #c8e6c9; padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; margin-bottom: 16px; text-align: center; }
     .total-counter-badge span.count-num { color: #1b5e20; font-size: 15px; text-decoration: underline; }
+
+    /* 오늘의 추천 주제 배너 스타일 */
+    .daily-topic-box { background-color: #f0f7ff; border: 1.5px solid #b3d7ff; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; }
+    .daily-topic-title { font-size: 13px; font-weight: bold; color: #0056b3; margin-bottom: 4px; display: flex; align-items: center; gap: 5px; }
+    .daily-topic-text { font-size: 14px; font-weight: bold; color: #1d1d1f; margin-bottom: 4px; }
+    .daily-topic-guide { font-size: 12px; color: #555; line-height: 1.4; }
 
     /* 로딩 화면 스타일 */
     .loading-box { text-align: center; padding: 40px 20px; color: #8e8e93; font-size: 14px; }
@@ -164,7 +170,7 @@
       <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
         <span id="user-info" class="user-nick"></span>
         <button onclick="togglePenNameModal()" class="outline" style="width:auto; padding:4px 8px; font-size:11px; margin-bottom:0;">필명 설정</button>
-        <!-- 관리자 전용 버튼들 -->
+        <!-- 관리자 전용 버튼 -->
         <button id="admin-ranking-btn" onclick="openRankingModal()" class="admin-btn hidden">🏆 이달의 성실왕</button>
         <button id="admin-inspect-btn" onclick="openAdminConsole()" class="admin-link-btn hidden">📋 전체 학생 일기 검사</button>
       </div>
@@ -213,14 +219,21 @@
       ⚠️ <strong>안내:</strong> 자동 번역 기능은 외부 API를 사용하므로, 주민등록번호, 비밀번호, 주소 등 민감한 개인정보는 일기에 작성하지 않도록 주의해 주세요.
     </div>
 
-    <!-- 1단계: 한글 쓰기 (자동 높이 조절 연결) -->
+    <!-- 🌟 [신규 추가] 오늘의 추천 일기 주제 박스 -->
+    <div id="daily-topic-box" class="daily-topic-box">
+      <div class="daily-topic-title">💡 오늘의 추천 주제</div>
+      <div id="daily-topic-text" class="daily-topic-text">오늘의 주제 불러오는 중...</div>
+      <div id="daily-topic-guide" class="daily-topic-guide"></div>
+    </div>
+
+    <!-- 1단계: 한글 쓰기 (자동 높이 조절) -->
     <div class="step-box">
       <div class="step-title">1단계: 한글 일기 쓰기 (최소 3문장 이상)</div>
-      <textarea id="korean-input" placeholder="오늘 있었던 일을 한글로 3문장 이상 작성하세요... (마침표, 물음표, 느낌표 또는 줄바꿈으로 구분)" oninput="autoResizeTextarea(this)"></textarea>
+      <textarea id="korean-input" placeholder="오늘 있었던 일을 한글로 3문장 이상 작성하세요... (위 추천 주제를 활용해도 좋아요!)" oninput="autoResizeTextarea(this)"></textarea>
       <button id="translate-btn" onclick="handleTranslate()">1단계 완료: 번역하기</button>
     </div>
 
-    <!-- 2단계: 번역문 확인 (자동 높이 조절 연결) -->
+    <!-- 2단계: 번역문 확인 (자동 높이 조절) -->
     <div id="step2-box" class="step-box hidden">
       <div class="step-title">2단계: 번역문 확인 (필요시 수정 가능)</div>
       <textarea id="english-input" placeholder="번역 결과가 여기에 표시됩니다..." oninput="autoResizeTextarea(this)"></textarea>
@@ -250,7 +263,7 @@
     <div class="calendar-grid" id="calendar-grid"></div>
   </div>
 
-  <!-- 일기 목록 화면 (최신 1개 / 랜덤 1개) -->
+  <!-- 일기 목록 화면 (최근 1개 / 랜덤 1개) -->
   <div id="list-section" class="card hidden">
     <div class="list-header-group">
       <div class="list-header-top">
@@ -423,7 +436,51 @@
     let isRandomMode = false;
     let calendarUnsubscribe = null;
 
-    // 관리자 전용 Firebase 콘솔 바로가기 함수
+    // 🌟 9월 일별 추천 글감 딕셔너리
+    const SEPTEMBER_TOPICS = {
+      8: { title: "오늘 급식의 하이라이트", guide: "오늘 급식 중 가장 맛있었던 메뉴는 무엇이었나요? 왜 맛있었는지, 내일 기대하는 메뉴는?" },
+      9: { title: "쉬는 시간 10분의 풍경", guide: "오늘 가장 즐거웠던 쉬는 시간에 친구들과 어떤 이야기를 나눴나요?" },
+      10: { title: "나를 피식 웃게 만든 순간", guide: "오늘 하루 중 친구의 말 한마디나 작은 일로 웃음이 터졌던 순간은 언제였나요?" },
+      11: { title: "불금 맞이 주말 계획", guide: "드디어 금요일! 이번 주말에 꼭 하고 싶은 일 한 가지를 적어보세요." },
+      12: { title: "나만의 늦잠 & 주말 휴식", guide: "오늘 몇 시에 일어났나요? 여유로운 시간에 무엇을 하며 에너지를 충전했나요?" },
+      13: { title: "이번 주를 정리하며 듣고 싶은 노래", guide: "오늘 하루를 마무리하며 듣고 싶은 음악이나 요즘 반복 재생 중인 노래는?" },
+      14: { title: "월요병을 이겨낸 나만의 비결", guide: "월요일 아침을 깨우기 위해 어떤 방법(간식, 친구와의 수다 등)을 썼나요?" },
+      15: { title: "내 가방/필통 속 가장 아끼는 물건", guide: "매일 들고 다니는 물건 중 가장 유용하거나 애정이 가는 물건을 소개해 보세요." },
+      16: { title: "가을 날씨 체감하기", guide: "아침저녁으로 달라진 바람, 하늘, 옷차림 등 가을을 느낀 순간이 있나요?" },
+      17: { title: "요즘 내가 꽂힌 것 (영상, 취미, 간식)", guide: "요즘 유튜브나 릴스에서 자주 보거나 편의점에서 자주 사 먹는 최애 아이템은?" },
+      18: { title: "일주일 동안 가장 보람찼던 일", guide: "이번 주 월요일부터 오늘까지 중 '해냈다' 싶은 뿌듯한 순간 한 가지는?" },
+      19: { title: "내가 좋아하는 나만의 공간", guide: "내 방 침대, 동네 카페, 도서관 등 머물 때 마음이 가장 편안해지는 장소는 어디인가요?" },
+      20: { title: "편안한 저녁 식사", guide: "오늘 가족이나 친구와 함께(또는 나를 위해) 먹은 가장 기억에 남는 식사는 무엇인가요?" },
+      21: { title: "고마운 사람에게 전하는 한마디", guide: "오늘 나를 도와주었거나 따뜻한 말을 건네준 친구나 가족이 있었나요?" },
+      22: { title: "수업 시간에 배운 흥미로운 사실", guide: "오늘 들었던 수업 중 가장 인상 깊었거나 신기했던 내용 한 토막을 적어보세요." },
+      23: { title: "나에게 초능력이 생긴다면?", guide: "순간이동, 시간 멈추기 등 오늘 하루 중 딱 한 번 쓰고 싶었던 능력이 있다면?" },
+      24: { title: "나를 위로해 주는 소소한 위안", guide: "공부나 일상 스트레스가 쌓일 때 내 기분을 금방 풀어주는 나만의 방법은?" },
+      25: { title: "한 주를 버틴 나에게 주는 칭찬", guide: "이번 한 주도 무사히 보낸 나 자신에게 해주고 싶은 칭찬 한마디를 적어보세요." },
+      26: { title: "집 밖으로 나가 본 풍경", guide: "산책길, 학원 가는 길 등 오늘 바깥에서 눈에 들어왔던 풍경이나 사람들의 모습은?" },
+      27: { title: "10년 뒤 나의 모습 상상하기", guide: "10년 후 20대 후반이 된 나는 어떤 직업을 갖고 어떤 하루를 보내고 있을까요?" },
+      28: { title: "일상 속 작은 친절", guide: "오늘 누군가를 위해 문을 잡아주었거나 응원을 건넸던 사소한 배려가 있었나요?" },
+      29: { title: "9월 중 가장 기억에 남는 하루", guide: "9월 1일부터 지금까지의 날들 중 가장 특별했거나 잊지 못할 장면 하나는?" },
+      30: { title: "9월 챌린지 완주 & 10월의 나에게", guide: "매일 세 줄씩 일기를 써온 나를 돌아보며, 10월에 이루고 싶은 목표 한 가지를 써보세요." }
+    };
+
+    function displayTodayTopic() {
+      const now = new Date();
+      const month = now.getMonth() + 1;
+      const day = now.getDate();
+      const topicTextElem = document.getElementById('daily-topic-text');
+      const topicGuideElem = document.getElementById('daily-topic-guide');
+
+      if (month === 9 && SEPTEMBER_TOPICS[day]) {
+        const item = SEPTEMBER_TOPICS[day];
+        topicTextElem.innerText = `[9월 ${day}일] ${item.title}`;
+        topicGuideElem.innerText = item.guide;
+      } else {
+        topicTextElem.innerText = "오늘 하루 중 가장 기억에 남는 순간";
+        topicGuideElem.innerText = "오늘 나에게 일어난 일(사실) - 내 기분(감정) - 내일의 다짐(생각)을 자유롭게 적어보세요.";
+      }
+    }
+
+    // 관리자 전용 Firebase 콘솔 바로가기
     window.openAdminConsole = () => {
       const consoleUrl = `https://console.firebase.google.com/project/${firebaseConfig.projectId}/firestore/databases/-default-/data/~2Fdiaries`;
       window.open(consoleUrl, '_blank');
@@ -447,7 +504,6 @@
       if (user) {
         currentUser = user;
         
-        // 관리자 전용 버튼 제어
         if (ADMIN_EMAILS.includes(user.email)) {
           document.getElementById('admin-ranking-btn').classList.remove('hidden');
           document.getElementById('admin-inspect-btn').classList.remove('hidden');
@@ -471,8 +527,9 @@
           document.getElementById('calendar-section').classList.remove('hidden');
           document.getElementById('list-section').classList.remove('hidden');
           
+          displayTodayTopic(); // ⭐️ 오늘 날짜 주제 로드
           await loadUserProfile();
-          loadUserAllDiaryDates(); // ⭐️ 사용자가 일기 쓴 모든 날짜 로드
+          loadUserAllDiaryDates();
           loadDiaries();
         }
       } else {
@@ -526,6 +583,7 @@
         document.getElementById('calendar-section').classList.remove('hidden');
         document.getElementById('list-section').classList.remove('hidden');
 
+        displayTodayTopic();
         await loadUserProfile();
         loadUserAllDiaryDates();
         loadDiaries();
@@ -758,7 +816,6 @@
       }
     };
 
-    // ⭐️ [달력 복원] 사용자가 쓴 모든 일기 날짜를 정확히 수집하여 달력에 표시
     function loadUserAllDiaryDates() {
       if (!currentUser) return;
       if (calendarUnsubscribe) calendarUnsubscribe();
@@ -808,7 +865,6 @@
         const dateKey = `${year}-${month + 1}-${date}`;
         cell.innerHTML = `<span>${date}</span>`;
 
-        // ⭐️ 작성한 날짜는 초록색 점 표시 & 클릭 이벤트 활성화
         if (writtenDatesSet.has(dateKey)) {
           cell.classList.add('has-diary');
           const dot = document.createElement('div');
@@ -825,7 +881,6 @@
       }
     }
 
-    // ⭐️ [날짜 클릭 시] 해당 날짜에 작성한 일기 불러오기
     async function loadDiariesByDate(year, month, day) {
       const listContainer = document.getElementById('diary-list');
       const listTitle = document.getElementById('list-title');
@@ -893,7 +948,6 @@
       }
     };
 
-    // ⭐️ [랜덤 모드] 무작위 1개 추출
     window.loadRandomDiary = async () => {
       if (!currentUser) return;
       const listContainer = document.getElementById('diary-list');
@@ -962,7 +1016,6 @@
       renderCalendar();
     };
 
-    // ⭐️ [최근 일기] 최신 1개만 로드 (limit: 1)
     function loadDiaries() {
       const q = query(collection(db, "diaries"), where("uid", "==", currentUser.uid), orderBy("createdAt", "desc"), limit(1));
       onSnapshot(q, (snapshot) => {
